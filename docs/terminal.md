@@ -10,6 +10,12 @@ Choose a **Working directory** and time limit, then type a command and select
 command history. While a command is running, the same text box sends input to
 that command. **Send EOF** closes stdin; **Cancel** stops the active command.
 **Clear output** clears the displayed transcript without stopping a command.
+**Copy session** copies the retained transcript as plain text, including commands,
+sent input, stdout/stderr, and exit statuses. It works while a command is running
+and copies a snapshot of the output available when clicked. Unsent input is not
+included. Cleared output and older output removed by the scrollback limit are
+not retained for copying. The button reports whether copying succeeded; if
+clipboard access is unavailable, select the output and copy it manually.
 
 Try these commands:
 

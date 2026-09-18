@@ -29,6 +29,8 @@ class Element extends Events {
     this.document = document;
     this.children = [];
     this.dataset = {};
+    this.style = {};
+    this.attributes = {};
     this.value = '';
     this._text = '';
     this.disabled = false;
@@ -38,12 +40,21 @@ class Element extends Events {
   }
   set textContent(value) { this._text = value; this.children = []; }
   get textContent() { return this._text + this.children.map(child => child.textContent).join(''); }
+  set id(value) { this._id = value; this.document.elements[value] = this; }
+  get id() { return this._id; }
   get scrollHeight() { return this.children.length * 20; }
-  appendChild(child) { this.children.push(child); child.parent = this; }
+  appendChild(child) { this.children.push(child); child.parent = this; return child; }
+  after(...children) {
+    const index = this.parent.children.indexOf(this);
+    this.parent.children.splice(index + 1, 0, ...children);
+    for (const child of children) child.parent = this.parent;
+  }
+  setAttribute(name, value) { this.attributes[name] = String(value); }
   replaceChildren() { for (const child of this.children) child.parent = null; this.children = []; this._text = ''; }
   remove() { if (this.parent) this.parent.children = this.parent.children.filter(child => child !== this); this.parent = null; }
   focus() { this.document.activeElement = this; }
   setSelectionRange(start, end) { this.selectionStart = start; this.selectionEnd = end; }
+  select() { this.focus(); this.setSelectionRange(0, this.value.length); }
 }
 
 class Document extends Events {
@@ -53,6 +64,11 @@ class Document extends Events {
     this.elements = Object.fromEntries(['transcript', 'composer', 'run', 'cancel', 'eof', 'clear',
       'cwd', 'timeout', 'command-form', 'connection-status', 'prompt-label', 'input-hint']
       .map(id => [id, new Element(this)]));
+    this.body = new Element(this);
+    for (const [id, element] of Object.entries(this.elements)) {
+      element.id = id;
+      this.body.appendChild(element);
+    }
     this.elements.cwd.value = '/workspace';
     this.elements.timeout.value = '120000';
     this.example = new Element(this);
@@ -68,6 +84,7 @@ function terminal(options = {}) {
   const document = new Document(options.token);
   const window = new Events();
   window.location = {origin: options.origin || 'http://127.0.0.1:8687'};
+  window.navigator = {};
   window.selection = '';
   window.getSelection = () => window.selection;
   const sockets = [];
@@ -169,6 +186,132 @@ test('scrollback uses inert text and bounds UTF-8 bytes and DOM nodes', () => {
   transcript.clear();
   assert.equal(transcript.bytes, 0);
   assert.equal(document.elements.transcript.children.length, 0);
+});
+
+test('copy text preserves stream chunks, newlines, commands and literal markup', () => {
+  const document = new Document();
+  const transcript = new Transcript(document.elements.transcript, document);
+  transcript.append('command', '$ cat');
+  transcript.append('stdout', 'hel');
+  transcript.append('stdout', 'lo');
+  transcript.append('stderr', '!');
+  transcript.append('system', 'Exit 0');
+  transcript.append('command', '$ printf markup');
+  transcript.append('stdout', '<img src=x>\n');
+  transcript.append('input', 'typed input\n');
+  transcript.append('system', 'Exit 1');
+  assert.equal(transcript.toText(), '$ cat\nhello!\nExit 0\n$ printf markup\n<img src=x>\ntyped input\nExit 1\n');
+});
+
+test('copy text contains only retained scrollback and becomes empty after clearing', () => {
+  const document = new Document();
+  const transcript = new Transcript(document.elements.transcript, document, 16, 2);
+  transcript.append('command', '$ old command');
+  transcript.append('stdout', 'old output');
+  transcript.append('stderr', '🍎🍎🍎🍎🍎');
+  assert.equal(transcript.toText(), '🍎🍎🍎🍎');
+  assert.ok(!transcript.toText().includes('old'));
+  assert.ok(!transcript.toText().includes('�'));
+  transcript.clear();
+  assert.equal(transcript.toText(), '');
+});
+
+test('copy snapshots a running session without submitting input, changing output or exposing the token', async () => {
+  const ui = terminal({token: 'private-copy-test-token'});
+  const writes = [];
+  let finishWrite;
+  ui.window.navigator.clipboard = {writeText: text => {
+    writes.push(text);
+    return new Promise(resolve => { finishWrite = resolve; });
+  }};
+  const socket = ui.start('cat');
+  socket.message({type: 'stdout', data: encodeBase64(encoder.encode('visible output'))});
+  ui.elements.composer.value = 'unsubmitted private draft';
+  const active = ui.controller.active;
+  const snapshot = ui.controller.transcript.toText();
+  const copying = ui.controller.copySession();
+  assert.equal(ui.elements['copy-session'].type, 'button');
+  assert.equal(ui.elements['copy-session'].disabled, true);
+  await ui.controller.copySession();
+  assert.deepEqual(writes, [snapshot]);
+  assert.ok(!writes[0].includes('private-copy-test-token'));
+  assert.ok(!writes[0].includes('unsubmitted private draft'));
+  socket.message({type: 'stdout', data: encodeBase64(encoder.encode(' later output'))});
+  finishWrite();
+  await copying;
+  assert.equal(ui.elements['copy-session'].disabled, false);
+  assert.match(ui.elements['copy-status'].textContent, /copied/i);
+  assert.equal(ui.controller.active, active);
+  assert.equal(ui.elements.composer.value, 'unsubmitted private draft');
+  assert.deepEqual(socket.sent.map(message => message.type), ['start']);
+  assert.equal(ui.controller.transcript.toText(), `${snapshot} later output`);
+  ui.controller.destroy();
+});
+
+test('clipboard denial falls back to a temporary textarea and restores focus and selection', async () => {
+  const ui = terminal();
+  ui.controller.transcript.append('stdout', 'clipboard fallback 🍎');
+  ui.elements.composer.value = 'draft selection';
+  ui.elements.composer.focus();
+  ui.elements.composer.setSelectionRange(2, 7);
+  const selectedRange = {cloneRange() { return this; }};
+  const restoredRanges = [];
+  ui.window.getSelection = () => ({rangeCount: 1, getRangeAt: () => selectedRange,
+    removeAllRanges: () => restoredRanges.push('cleared'), addRange: range => restoredRanges.push(range)});
+  ui.window.navigator.clipboard = {writeText: async () => { throw new Error('Permission denied'); }};
+  const children = [...ui.document.body.children];
+  const legacyCopies = [];
+  ui.document.execCommand = command => {
+    assert.equal(command, 'copy');
+    const field = ui.document.activeElement;
+    legacyCopies.push(field.value);
+    assert.equal(field.selectionStart, 0);
+    assert.equal(field.selectionEnd, field.value.length);
+    return true;
+  };
+  await ui.controller.copySession();
+  assert.deepEqual(legacyCopies, ['clipboard fallback 🍎']);
+  assert.deepEqual(ui.document.body.children, children);
+  assert.equal(ui.document.activeElement, ui.elements.composer);
+  assert.deepEqual([ui.elements.composer.selectionStart, ui.elements.composer.selectionEnd], [2, 7]);
+  assert.deepEqual(restoredRanges, ['cleared', selectedRange]);
+  assert.match(ui.elements['copy-status'].textContent, /copied/i);
+  assert.equal(ui.controller.transcript.toText(), 'clipboard fallback 🍎');
+  ui.controller.destroy();
+});
+
+test('missing clipboard API uses the fallback and reports fallback failure without leaving temporary input', async () => {
+  const ui = terminal();
+  ui.controller.transcript.append('stdout', 'retained output');
+  const children = [...ui.document.body.children];
+  let copies = 0;
+  ui.document.execCommand = () => { copies++; return false; };
+  await ui.controller.copySession();
+  assert.equal(copies, 1);
+  assert.equal(ui.elements['copy-session'].disabled, false);
+  assert.match(ui.elements['copy-status'].textContent, /unavailable|could not|unable|failed/i);
+  assert.deepEqual(ui.document.body.children, children);
+  assert.equal(ui.controller.transcript.toText(), 'retained output');
+  assert.equal(ui.sockets.length, 0);
+  ui.controller.destroy();
+});
+
+test('the copy button is wired and an empty cleared session never touches the clipboard', async () => {
+  const ui = terminal();
+  const writes = [];
+  ui.window.navigator.clipboard = {writeText: async text => { writes.push(text); }};
+  ui.controller.transcript.append('stdout', 'copy by clicking');
+  ui.elements['copy-session'].emit('click');
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.deepEqual(writes, ['copy by clicking']);
+  ui.elements.clear.emit('click');
+  await ui.controller.copySession();
+  assert.deepEqual(writes, ['copy by clicking']);
+  assert.match(ui.elements['copy-status'].textContent, /nothing to copy/i);
+  assert.equal(ui.elements['copy-session'].disabled, false);
+  ui.controller.destroy();
+  assert.equal(ui.elements['copy-session'].events.get('click').size, 0);
 });
 
 test('history is bounded and restores the in-progress draft', () => {

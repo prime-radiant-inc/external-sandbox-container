@@ -151,6 +151,55 @@ export class Transcript {
     this.entries.length = 0;
     this.bytes = 0;
   }
+  toText() {
+    let text = '';
+    for (const entry of this.entries) {
+      const block = entry.kind === 'command' || entry.kind === 'system';
+      if (block && text && !text.endsWith('\n')) text += '\n';
+      text += entry.element.textContent;
+      if (block && !text.endsWith('\n')) text += '\n';
+    }
+    return text;
+  }
+}
+
+async function copyText(text, document, window) {
+  try {
+    if (!window.navigator?.clipboard?.writeText) throw new Error('Clipboard API unavailable.');
+    await window.navigator.clipboard.writeText(text);
+    return;
+  } catch {
+    // Older embedded browsers may only support copying a selected text field.
+    // Keep this fallback local and restore the user's input/selection afterward.
+    const focused = document.activeElement;
+    const inputSelection = typeof focused?.selectionStart === 'number'
+      ? [focused.selectionStart, focused.selectionEnd, focused.selectionDirection] : null;
+    const selection = window.getSelection?.();
+    const ranges = [];
+    for (let index = 0; index < (selection?.rangeCount || 0); index++) {
+      ranges.push(selection.getRangeAt(index).cloneRange());
+    }
+    const field = document.createElement('textarea');
+    field.value = text;
+    field.readOnly = true;
+    field.setAttribute('aria-label', 'Terminal session to copy');
+    field.style.position = 'fixed';
+    field.style.opacity = '0';
+    field.style.pointerEvents = 'none';
+    document.body.appendChild(field);
+    try {
+      field.select();
+      if (!document.execCommand?.('copy')) throw new Error('Copy is unavailable.');
+    } finally {
+      field.remove();
+      focused?.focus({preventScroll: true});
+      if (inputSelection) focused.setSelectionRange(...inputSelection);
+      if (ranges.length) {
+        selection.removeAllRanges();
+        for (const range of ranges) selection.addRange(range);
+      }
+    }
+  }
 }
 
 export class CommandHistory {
@@ -207,6 +256,19 @@ export class TerminalController {
       if (!this.elements[id]) throw new Error(`Missing terminal element: ${id}`);
     }
     this.transcript = new Transcript(this.elements.transcript, document);
+    // Progressive enhancement also works with an already-running server's HTML.
+    const copy = document.createElement('button');
+    copy.id = 'copy-session';
+    copy.type = 'button';
+    copy.textContent = 'Copy session';
+    copy.title = 'Copy the retained commands, input, output, and exit statuses as plain text';
+    const copyStatus = document.createElement('span');
+    copyStatus.id = 'copy-status';
+    copyStatus.setAttribute('role', 'status');
+    copyStatus.setAttribute('aria-live', 'polite');
+    this.elements.clear.after(copy, copyStatus);
+    this.elements['copy-session'] = copy;
+    this.elements['copy-status'] = copyStatus;
     this.history = new CommandHistory();
     this.active = null;
     this.listeners = [];
@@ -219,6 +281,7 @@ export class TerminalController {
     this.listen(this.elements.cancel, 'click', () => this.cancel());
     this.listen(this.elements.eof, 'click', () => this.eof());
     this.listen(this.elements.clear, 'click', () => this.transcript.clear());
+    this.listen(copy, 'click', () => this.copySession());
     this.listen(document, 'keydown', event => this.shortcuts(event));
     this.listen(window, 'pagehide', () => {
       // A back-forward-cache restore reuses this document without rerunning the
@@ -239,6 +302,28 @@ export class TerminalController {
   listen(target, name, handler) {
     target.addEventListener(name, handler);
     this.listeners.push(() => target.removeEventListener(name, handler));
+  }
+  async copySession() {
+    const button = this.elements['copy-session'];
+    const status = this.elements['copy-status'];
+    if (button.disabled) return;
+    const text = this.transcript.toText();
+    status.title = '';
+    if (!text) {
+      status.textContent = 'Nothing to copy';
+      return;
+    }
+    button.disabled = true;
+    status.textContent = 'Copying…';
+    try {
+      await copyText(text, this.document, this.window);
+      status.textContent = 'Copied!';
+    } catch {
+      status.textContent = 'Copy unavailable';
+      status.title = 'Select the terminal output and copy it using your browser.';
+    } finally {
+      button.disabled = false;
+    }
   }
   status(text, state) {
     this.elements['connection-status'].textContent = text;

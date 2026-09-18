@@ -55,6 +55,13 @@ RUN_APPLE_CONTAINER_TESTS=1 uv run pytest -q --ignore=tests/test_codex_cli.py
 node --test tests/test_terminal_js.mjs
 ```
 
+The subsequent **Copy session** addition passed all **21 JavaScript tests**.
+Its six new checks cover plain-text serialization, retained/cleared scrollback,
+copying during an active command without including drafts or tokens, clipboard
+fallback and failure, and focus/selection restoration. The live server was
+verified to serve the new JavaScript without a container restart. A fresh
+browser click check was unavailable because the host Mac was locked.
+
 ## Versions
 
 - Host: Apple silicon, macOS 26.4; Python 3.14.3; uv 0.12.9.

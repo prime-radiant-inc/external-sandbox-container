@@ -4,7 +4,7 @@ Prepared 18 September 2026 as a handoff for another coding agent. All file links
 
 ## Comparison baseline
 
-The new Python project is at `/Users/simon/Documents/Codex/2026-09-18/briefly-look-at-v86-wasm-for/outputs/sandbox-exec-server`. Its implementation through commit `ab2cc66` includes the browser terminal, proxy management UI, Apple Container backend, and expanded developer-tool image.
+The new Python project is at `/Users/simon/Documents/Codex/2026-09-18/briefly-look-at-v86-wasm-for/outputs/sandbox-exec-server`. Its implementation through commit `ab2cc66` includes the browser terminal, proxy management UI, Apple Container backend, and expanded developer-tool image. This handoff also includes the subsequent Copy session button.
 
 The reference v86 project is at `/Users/simon/Documents/Codex/2026-09-17/find/outputs/v86-shell-server`. Its current checkout is `e9c0462`; the Python project's provenance names `3b0002f1a511728b1f56638ea937a03447fbebbf`. The intervening change is documentation-only, so the runtime comparison applies to both.
 
@@ -17,6 +17,8 @@ Provenance: [/Users/simon/Documents/Codex/2026-09-18/briefly-look-at-v86-wasm-fo
 The server homepage is an interactive command console implemented in plain browser JavaScript. It calls the existing `/exec/ws` protocol rather than introducing another command execution API. Users can select a working directory and timeout, run multiline shell commands, watch separate stdout/stderr streams, send stdin, close stdin with EOF, cancel commands, clear the transcript, and navigate command history. Example buttons populate useful commands, and a link opens the proxy controls.
 
 The client preserves UTF-8 characters split across output chunks, bounds transcript/history/input memory, acknowledges stdin chunks, and avoids replaying commands after connection failures. It handles stale socket callbacks and browser back/forward cache restoration.
+
+The **Copy session** button copies a plain-text snapshot of the retained transcript, including commands, sent input, stdout/stderr, and exit statuses. It supports copying while a command is running, reports success/failure, and uses a selected-text fallback in browsers without working Clipboard API access. It excludes unsent input and does not recover cleared or trimmed scrollback. The button is added by the JavaScript client, so an existing server can serve it after a browser refresh without restarting the container.
 
 This is a pipe-based console, not a PTY. Each run starts a new Bash command; `cd` and environment changes do not persist between runs. Files persist for the container lifetime. Full-screen terminal programs are unsupported.
 
@@ -140,6 +142,6 @@ Package installation still depends on explicitly allowing package registries. In
 
 ## Verification and handoff state
 
-The expanded image passed 254 Python tests in two runs, including real Apple Container and Node/uv proxy tests. The terminal client has 15 passing JavaScript tests. The two real Codex CLI/App Server tests passed in the earlier baseline and were not rerun with the expanded image. Lint, package builds, and live browser/WebSocket smoke checks also passed. Detailed commands and qualifications: [/Users/simon/Documents/Codex/2026-09-18/briefly-look-at-v86-wasm-for/outputs/sandbox-exec-server/docs/verification.md](/Users/simon/Documents/Codex/2026-09-18/briefly-look-at-v86-wasm-for/outputs/sandbox-exec-server/docs/verification.md).
+The expanded image passed 254 Python tests in two runs, including real Apple Container and Node/uv proxy tests. The terminal client has 21 passing JavaScript tests, including six clipboard checks. The two real Codex CLI/App Server tests passed in the earlier baseline and were not rerun with the expanded image. Lint, package builds, and earlier live browser/WebSocket smoke checks also passed; the clipboard change was checked automatically because the Mac was locked. Detailed commands and qualifications: [/Users/simon/Documents/Codex/2026-09-18/briefly-look-at-v86-wasm-for/outputs/sandbox-exec-server/docs/verification.md](/Users/simon/Documents/Codex/2026-09-18/briefly-look-at-v86-wasm-for/outputs/sandbox-exec-server/docs/verification.md).
 
 The running demo is available at `http://127.0.0.1:8687/`, with proxy management at `http://127.0.0.1:8687/proxy`. Browser pages need refreshing after a server restart to obtain new tokens.
