@@ -38,6 +38,7 @@ class Agent:
         self.jobs = {}
         self.sessions = {}
         self.tasks = set()
+        self.proxy = None
 
     async def send(self, value):
         data = json.dumps(value, separators=(",", ":"), ensure_ascii=True).encode()
@@ -62,6 +63,18 @@ class Agent:
             await self.send({"id": ident, "error": error})
 
     async def dispatch(self, method, p):
+        if method == "configure_proxy":
+            if self.proxy is not None:
+                raise ValueError("Guest proxy is already configured")
+            from guest_proxy import GuestProxy
+            self.proxy = GuestProxy(self.send)
+            try:
+                environment = await self.proxy.start(p["caPem"])
+            except BaseException:
+                await self.proxy.close()
+                self.proxy = None
+                raise
+            return {"environment": environment}
         if method == "start":
             if len(self.jobs) >= 16:
                 raise RuntimeError("Too many concurrent processes")
@@ -200,6 +213,11 @@ async def main():
             if size > MAX_FRAME:
                 raise ValueError("Agent request exceeds frame limit")
             message = json.loads(await reader.readexactly(size))
+            if message.get("event") == "proxy":
+                if agent.proxy is None:
+                    raise ValueError("Proxy transport is not configured")
+                agent.proxy.relay.feed(message)
+                continue
             if len(agent.tasks) >= 256:
                 await agent.send({"id": message.get("id"), "error": {"message": "Too many pending requests"}})
                 continue
@@ -209,6 +227,8 @@ async def main():
     except asyncio.IncompleteReadError:
         pass
     finally:
+        if agent.proxy is not None:
+            await agent.proxy.close()
         jobs = list(agent.jobs.values())
         for job in jobs:
             job.kill(signal.SIGKILL)

@@ -12,6 +12,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Protocol
 
+from .proxy_relay import ProxyRelay
+
 MAX_FRAME = 24 * 1024 * 1024
 
 
@@ -133,7 +135,7 @@ class Backend(Protocol):
 
 
 class AppleContainerBackend:
-    def __init__(self, mounts=None, image="python:3.13-slim", container_bin="container", cpus=2, memory=512):
+    def __init__(self, mounts=None, image="python:3.13-slim", container_bin="container", cpus=2, memory=512, proxy=None):
         self.mounts = mounts or []
         self.image, self.container_bin = image, container_bin
         self.cpus, self.memory = cpus, memory
@@ -149,6 +151,8 @@ class AppleContainerBackend:
         self.stderr_tail = b""
         self._env = {}
         self.architecture = "unknown"
+        self.proxy = proxy
+        self.proxy_relay = None
 
     @property
     def default_cwd(self):
@@ -160,6 +164,7 @@ class AppleContainerBackend:
     def info(self):
         return {"status": "stopped" if self.closed else "ready", "backend": "apple-container",
                 "architecture": self.architecture, "shell": "/bin/bash", "network": False,
+                "proxyEnabled": self.proxy is not None,
                 "mounts": [m.info() for m in self.mounts], "defaultCwd": self.default_cwd,
                 "activeCommands": len(self.processes), "containerId": self.name, "image": self.image}
 
@@ -183,6 +188,11 @@ class AppleContainerBackend:
         return args
 
     async def boot(self):
+        if self.proxy is not None:
+            address = self.proxy.address
+            if not isinstance(address, tuple) or len(address) != 2 or address[0] != "127.0.0.1":
+                raise ValueError("Host proxy must listen on a fixed IPv4 loopback address")
+            self.proxy_relay = ProxyRelay(self._send, address=address)
         self.ready = asyncio.get_running_loop().create_future()
         self.child = await asyncio.create_subprocess_exec(*self.command(),
             stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
@@ -190,6 +200,10 @@ class AppleContainerBackend:
         self.stderr_task = asyncio.create_task(self._stderr())
         try:
             await asyncio.wait_for(asyncio.shield(self.ready), 120)
+            if self.proxy is not None:
+                result = await self._rpc("configure_proxy", {"caPem": self.proxy.ca_pem})
+                self._env.update(self.proxy.guest_env)
+                self._env.update(result["environment"])
         except BaseException:
             await self.close()
             raise
@@ -206,7 +220,11 @@ class AppleContainerBackend:
                 if size > MAX_FRAME:
                     raise RuntimeError("Invalid container agent frame")
                 value = json.loads(await self.child.stdout.readexactly(size))
-                if value.get("event") == "ready":
+                if value.get("event") == "proxy":
+                    if self.proxy_relay is None:
+                        raise ValueError("Unexpected proxy frame while proxy is disabled")
+                    self.proxy_relay.feed(value)
+                elif value.get("event") == "ready":
                     self._env = value["environment"]
                     self.architecture = value["architecture"]
                     if not self.ready.done():
@@ -237,6 +255,23 @@ class AppleContainerBackend:
             for process in self.processes.values():
                 process.fail(reason)
             self.processes.clear()
+        finally:
+            if self.proxy_relay is not None:
+                await self.proxy_relay.close()
+            # A malformed/closed private transport must not leave a live relay or
+            # command channel behind. Closing stdin also shuts down the guest.
+            if self.child.stdin:
+                self.child.stdin.close()
+
+    async def _send(self, value):
+        if self.closed or not self.child or self.child.returncode is not None:
+            raise RuntimeError("Container agent is not running")
+        payload = json.dumps(value, ensure_ascii=True).encode()
+        if len(payload) > MAX_FRAME:
+            raise ValueError("Agent request exceeds frame limit")
+        async with self.lock:
+            self.child.stdin.write(struct.pack(">I", len(payload)) + payload)
+            await self.child.stdin.drain()
 
     async def _rpc(self, method, params, timeout=30):
         if self.closed or not self.child or self.child.returncode is not None:
@@ -246,12 +281,7 @@ class AppleContainerBackend:
         future = asyncio.get_running_loop().create_future()
         self.pending[ident] = future
         try:
-            payload = json.dumps({"id": ident, "method": method, "params": params}, ensure_ascii=True).encode()
-            if len(payload) > MAX_FRAME:
-                raise ValueError("Agent request exceeds frame limit")
-            async with self.lock:
-                self.child.stdin.write(struct.pack(">I", len(payload)) + payload)
-                await self.child.stdin.drain()
+            await self._send({"id": ident, "method": method, "params": params})
             return await asyncio.wait_for(future, timeout)
         finally:
             self.pending.pop(ident, None)
@@ -294,6 +324,8 @@ class AppleContainerBackend:
         if self.closed:
             return
         self.closed = True
+        if self.proxy_relay is not None:
+            await self.proxy_relay.close()
         if self.child:
             if self.child.stdin:
                 self.child.stdin.close()
