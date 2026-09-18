@@ -1,6 +1,6 @@
 [project]
 name = "sandbox-exec-server"
-version = "0.1.0"
+version = "0.1.1"
 description = "Bring your own sandbox to coding agents: compatible shell and Codex execution APIs"
 readme = "README.md"
 authors = [
