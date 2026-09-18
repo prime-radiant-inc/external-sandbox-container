@@ -2,10 +2,13 @@
 import asyncio
 import base64
 import datetime
+import io
 import ipaddress
 import json
 import os
+import shlex
 import ssl
+import zipfile
 
 from aiohttp import web
 from cryptography import x509
@@ -24,6 +27,27 @@ pytestmark = [pytest.mark.integration, pytest.mark.asyncio(loop_scope="module"),
 
 SECRET = "synthetic-private-key-only-on-the-host-729cb1"
 PLACEHOLDER = "public-demo-placeholder"
+tool_image = pytest.mark.skipif(os.environ.get("RUN_SANDBOX_TOOL_IMAGE_TESTS") != "1",
+                                reason="Set RUN_SANDBOX_TOOL_IMAGE_TESTS=1 with a built tool image")
+WHEEL_PATH = "/sandbox_tool_fixture-0.0.1-py3-none-any.whl"
+
+
+def fixture_wheel():
+    """A dependency-free wheel keeps uv's network check entirely local."""
+    files = {
+        "sandbox_tool_fixture/__init__.py": "VALUE = 'installed-through-the-proxy'\n",
+        "sandbox_tool_fixture-0.0.1.dist-info/METADATA":
+            "Metadata-Version: 2.1\nName: sandbox-tool-fixture\nVersion: 0.0.1\n",
+        "sandbox_tool_fixture-0.0.1.dist-info/WHEEL":
+            "Wheel-Version: 1.0\nRoot-Is-Purelib: true\nTag: py3-none-any\n",
+    }
+    record = "sandbox_tool_fixture-0.0.1.dist-info/RECORD"
+    files[record] = "".join(f"{name},,\n" for name in [*files, record])
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w") as archive:
+        for name, content in files.items():
+            archive.writestr(name, content)
+    return output.getvalue()
 
 
 def tls_contexts(directory):
@@ -77,9 +101,14 @@ async def proxy_sandbox(tmp_path_factory):
             pass
         return response
 
+    async def wheel(request):
+        received.append({"path": request.path, "method": request.method})
+        return web.Response(body=fixture_wheel(), content_type="application/octet-stream")
+
     app = web.Application()
     app.router.add_route("*", "/echo", echo)
     app.router.add_get("/stream", stream)
+    app.router.add_get(WHEEL_PATH, wheel)
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "127.0.0.1", 0, ssl_context=server_tls)
@@ -218,5 +247,108 @@ except urllib.error.URLError:
     print('blocked')
 """
         assert await run_python(backend, source) == b"blocked\n"
+    finally:
+        proxy.update_policy(config)
+
+
+@tool_image
+async def test_demo_image_includes_runnable_developer_tools(proxy_sandbox):
+    backend, _, _, _, _ = proxy_sandbox
+    source = r"""
+set -eu
+node -e 'if (process.versions.node.split(".")[0] !== "24") process.exit(1); console.log("node-ok")'
+npm --version
+uv --version
+uvx --version
+printf 'wanted\nother\n' | rg '^wanted$'
+printf '{"answer":42}' | jq -e '.answer == 42'
+patch --version
+unzip -v
+curl --version
+git --version
+ps -ef
+"""
+    output = await collect(await backend.start(["/bin/bash", "-c", source], stdin=False, timeout_ms=20000))
+    assert b"node-ok\n" in output
+    assert b"wanted\n" in output
+    assert b"true\n" in output
+
+
+@tool_image
+@pytest.mark.parametrize("client", ["fetch", "https"])
+async def test_node_clients_use_verified_proxy_and_keep_credentials_on_host(proxy_sandbox, client):
+    backend, proxy, origin, received, _ = proxy_sandbox
+    source = """
+import assert from 'node:assert/strict';
+import https from 'node:https';
+assert.equal(process.env.NODE_USE_ENV_PROXY, '1');
+assert.ok(process.env.NODE_EXTRA_CA_CERTS?.startsWith('/run/'));
+const origin = ORIGIN;
+const client = CLIENT;
+const headers = {Authorization: 'Bearer ' + process.env.FIXTURE_KEY};
+async function request(url) {
+  if (client === 'fetch') {
+    const response = await fetch(url, {headers, signal: AbortSignal.timeout(5000)});
+    return {status: response.status, body: await response.text()};
+  }
+  return await new Promise((resolve, reject) => {
+    const req = https.get(url, {headers, timeout: 5000}, response => {
+      let body = '';
+      response.setEncoding('utf8');
+      response.on('data', chunk => { body += chunk; });
+      response.on('error', reject);
+      response.on('end', () => resolve({status: response.statusCode, body}));
+    });
+    req.on('timeout', () => req.destroy(new Error('Request timed out')));
+    req.on('error', reject);
+  });
+}
+const allowed = await request(origin + '/echo');
+const deniedPath = await request(origin + '/not-allowed');
+let deniedOrigin;
+try {
+  deniedOrigin = (await request('https://not-allowed.invalid/')).status;
+} catch {
+  deniedOrigin = 'connection-rejected';
+}
+console.log(JSON.stringify({allowed, deniedPath: deniedPath.status, deniedOrigin,
+                          placeholder: process.env.FIXTURE_KEY}));
+""".replace("ORIGIN", json.dumps(origin)).replace("CLIENT", json.dumps(client))
+    before = len(received)
+    result = json.loads(await collect(await backend.start(
+        ["node", "--input-type=module", "-e", source], stdin=False, timeout_ms=20000)))
+    assert result["allowed"] == {"status": 200, "body": "Bearer [REDACTED]\n"}
+    assert result["deniedPath"] == 403
+    assert result["deniedOrigin"] in (403, "connection-rejected")
+    assert result["placeholder"] == PLACEHOLDER
+    assert SECRET not in json.dumps(result)
+    assert received[before:] == [{"path": "/echo", "authorization": f"Bearer {SECRET}", "body": b""}]
+    assert any(event["origin"] == "https://not-allowed.invalid" and event["status"] == 403
+               for event in proxy.snapshot()["events"])
+
+
+@tool_image
+async def test_uv_installs_local_wheel_through_verified_https_proxy(proxy_sandbox):
+    backend, proxy, origin, received, config = proxy_sandbox
+    # Package downloads need no API credential. Keep this test's policy narrow,
+    # then restore the credential fixture used by the other tests.
+    proxy.update_policy({"allow": [{"origin": origin, "methods": ["GET", "HEAD"],
+                                    "paths": [WHEEL_PATH], "allowCidrs": ["127.0.0.1/32"]}],
+                         "guestEnv": config["guestEnv"]})
+    before = len(received)
+    try:
+        source = f"""
+set -eu
+target=$(mktemp -d)
+trap 'rm -rf "$target"' EXIT
+uv pip install --no-cache --no-deps --no-index --python /usr/local/bin/python3 \\
+    --target "$target" {shlex.quote(origin + WHEEL_PATH)}
+PYTHONPATH="$target" uv run --offline --no-project --python /usr/local/bin/python3 \\
+    python -c 'import sandbox_tool_fixture; print(sandbox_tool_fixture.VALUE)'
+"""
+        output = await collect(await backend.start(["/bin/bash", "-c", source], stdin=False, timeout_ms=20000))
+        assert output == b"installed-through-the-proxy\n"
+        assert any(item["path"] == WHEEL_PATH for item in received[before:])
+        assert all(item["path"] == WHEEL_PATH for item in received[before:])
     finally:
         proxy.update_policy(config)

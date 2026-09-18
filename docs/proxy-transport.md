@@ -19,6 +19,7 @@ command environment adds:
 - `HTTP_PROXY`, `HTTPS_PROXY`, `http_proxy`, and `https_proxy`, all pointing to that
   guest loopback listener.
 - Empty `NO_PROXY` and `no_proxy` values.
+- `NODE_USE_ENV_PROXY=1`, enabling Node's built-in environment-proxy support.
 - `SSL_CERT_FILE`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, and
   `NODE_EXTRA_CA_CERTS`, all pointing at the public bundle.
 - Configured placeholder environment variables. Real credentials never cross this
@@ -29,6 +30,14 @@ meaning. A client that supplies its own environment must preserve these values i
 it wants proxy access. Removing proxy settings cannot create direct network access.
 The health response retains `network: false` to describe the absent external NIC;
 `proxyEnabled` separately reports whether the managed relay is configured.
+
+The optional tool image includes Node 24 LTS and uv. Node's built-in `fetch`
+and default HTTP(S) agents use the proxy environment setting; uv uses the proxy
+variables and `SSL_CERT_FILE`. See the upstream
+[Node proxy settings](https://r2.nodejs.org/docs/latest-v24.x/api/cli.html#node_use_env_proxy1)
+and [uv certificate settings](https://docs.astral.sh/uv/concepts/authentication/certificates/).
+Programs that replace their own HTTP agent or trust configuration may need
+explicit configuration; they still cannot bypass the absent external network.
 
 ## Private frames and flow control
 

@@ -48,9 +48,11 @@ is intentionally unavailable.
 ## Optional tool image
 
 The default Python image is enough for this arithmetic demo. The included
-`examples/Containerfile` adds curl, Git, procps (including `ps`), and CA
-certificates for broader coding tasks. Build it while host networking is
-available:
+`examples/Containerfile` adds Node.js 24 LTS/npm/npx, uv/uvx, ripgrep (`rg`), jq,
+patch, unzip, curl, Git, procps (including `ps`), and CA certificates for broader
+coding tasks. Node 24.21.0 and uv 0.12.15 are copied from their official images;
+the runtime image remains based on `python:3.13-slim`. Build it while host
+networking is available:
 
 ```sh
 container build --tag sandbox-demo:latest --file examples/Containerfile .
@@ -72,7 +74,29 @@ In the browser terminal at `http://127.0.0.1:8687/`, check the installed tools:
 curl --version
 git --version
 ps -ef
+node --version
+npm --version
+uv --version
+rg --version
+echo '{"ready":true}' | jq .ready
+patch --version
+unzip -v
 ```
+
+With the managed proxy enabled, Node receives `NODE_USE_ENV_PROXY=1` and
+`NODE_EXTRA_CA_CERTS`; uv uses the same public CA bundle through `SSL_CERT_FILE`.
+For example, the public proxy policy permits this Node request:
+
+```sh
+node -e 'fetch("https://example.com").then(r => console.log(r.status))'
+```
+
+Adding tools does not add allowed destinations. To install packages, grant the
+needed registry origins in `/proxy` or your proxy configuration: ordinarily
+`https://registry.npmjs.org` for npm, and `https://pypi.org` plus
+`https://files.pythonhosted.org` for Python packages. Packages that fetch from
+other hosts need corresponding rules. Existing Python is available to uv, so
+Python downloads are unnecessary for projects compatible with Python 3.13.
 
 ## Verification
 

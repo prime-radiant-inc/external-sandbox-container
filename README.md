@@ -130,8 +130,8 @@ This demonstrates interchangeable execution routes, not a claim that every
 operation performed by an agent is contained. Isolation and filesystem details
 differ between Apple's container runtime and the v86 prototype.
 
-For an image with curl, Git, procps (`ps`), and CA certificates in addition to
-Python and Bash, see
+For an image with Node.js 24 LTS/npm, uv/uvx, ripgrep (`rg`), jq, patch, unzip,
+curl, Git, procps (`ps`), and CA certificates in addition to Python and Bash, see
 [the example Containerfile](examples/Containerfile) and
 [image build instructions](docs/demo.md#optional-tool-image). The default image
 remains deliberately small.
@@ -141,8 +141,10 @@ remains deliberately small.
 The proxy baseline passed **220 tests**, including real Apple Containers, the
 unchanged Python client, and Codex CLI 0.154.0. The terminal update passed **250
 Python tests and 15 JavaScript tests**; the two separately configured Codex tests
-were not repeated in that run. See [verification](docs/verification.md) for the
-tested image digest, package checks, and reproducible commands.
+were not repeated in that run. The expanded tool image subsequently passed
+**254 Python tests**, including Node and uv requests through the managed proxy.
+See [verification](docs/verification.md) for the tested image digests, package
+checks, and reproducible commands.
 
 ```sh
 uv run pytest -m 'not integration'

@@ -276,6 +276,7 @@ async def test_guest_installs_only_public_ca_and_local_proxy_environment(tmp_pat
         assert environment["HTTP_PROXY"].startswith("http://127.0.0.1:")
         assert environment["HTTPS_PROXY"] == environment["http_proxy"] == environment["HTTP_PROXY"]
         assert environment["NO_PROXY"] == environment["no_proxy"] == ""
+        assert environment["NODE_USE_ENV_PROXY"] == "1"
         assert environment["SSL_CERT_FILE"] == environment["NODE_EXTRA_CA_CERTS"]
         assert pem in (tmp_path / "ca-bundle.pem").read_text()
         assert "PRIVATE KEY" not in (tmp_path / "ca-bundle.pem").read_text()

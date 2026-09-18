@@ -68,7 +68,7 @@ To repeat with exactly that image, pass
 `--image python@sha256:9d2e5553305c7c7b0097999bb17187c69b921ccd6bc9d40e4bb5ebe652c00285`.
 The default tag may advance in the registry.
 
-## Optional tool image
+## Initial tool image
 
 Built `sandbox-demo:latest` from `examples/Containerfile`, adding curl, Git,
 procps (`ps`), and CA certificates to the Python base. The resulting image
@@ -92,6 +92,38 @@ Git 2.47.3, and procps-ng 4.0.4. `ps -ef` listed the guest processes.
 and CA; a request to the unlisted `https://example.org` received HTTP 403.
 A curl request with the proxy bypassed and a supplied destination IP failed
 to connect, and `/sys/class/net` still contained only `lo`.
+
+## Expanded tool image
+
+Rebuilt `sandbox-demo:latest` with Node 24.21.0 (npm/npx 11.19.0), uv/uvx
+0.12.15, ripgrep 14.1.1, jq, GNU patch 2.8, and unzip, retaining the previous
+tools. The new image index digest is
+`sha256:3e05fc6fbcf94d63ed9aa245e2f062e463cda2aa1acfe0e3f1831cfecaa7871e`.
+Node and uv are copied from versioned official images; Debian supplies the
+other tools. The proxy now sets `NODE_USE_ENV_PROXY=1` alongside its existing
+public CA environment variables.
+
+**254 Python tests passed in two runs**: 245 server/container/client tests
+(`245 passed in 5.12s`) and nine proxy integration tests (`9 passed in 1.87s`).
+The two separately configured Codex CLI tests were not repeated. Four new
+opt-in tool-image tests check runnable tools, Node's `fetch` and `node:https`
+with verified proxy TLS, allowed and denied requests, host-only credentials,
+response redaction, and uv installation/import of a tiny synthetic wheel
+served by the local HTTPS fixture. These tests require the expanded image;
+they are skipped with the minimal default image.
+
+```sh
+RUN_APPLE_CONTAINER_TESTS=1 RUN_SANDBOX_TOOL_IMAGE_TESTS=1 \
+SANDBOX_TEST_IMAGE=sandbox-demo:latest \
+uv run pytest -q --ignore=tests/test_codex_cli.py
+```
+
+After restarting the demo with its unchanged live proxy policy, a smoke check
+through the terminal's authenticated WebSocket API verified all new tool
+versions, ran Python with `uv run --offline --no-project`, and received HTTP
+200 from `https://example.com` using Node's built-in `fetch`. No package-registry
+origins were added to the live allow-list. Lint, whitespace checks, and package
+build also passed.
 
 ## Reproduce
 

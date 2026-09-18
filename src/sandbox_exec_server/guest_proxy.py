@@ -42,6 +42,7 @@ class GuestProxy:
         endpoint = f"http://127.0.0.1:{port}"
         self.environment = {key: endpoint for key in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy")}
         self.environment.update({"NO_PROXY": "", "no_proxy": ""})
+        self.environment["NODE_USE_ENV_PROXY"] = "1"
         self.environment.update({key: str(bundle) for key in (
             "SSL_CERT_FILE", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE", "NODE_EXTRA_CA_CERTS")})
         return self.environment

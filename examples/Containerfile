@@ -1,9 +1,19 @@
+FROM node:24.21.0-bookworm-slim AS node
+FROM ghcr.io/astral-sh/uv:0.12.15 AS uv
 FROM python:3.13-slim
 
 # Network is used to prepare the image, before the execution sandbox starts.
 # At runtime sandbox-exec-server still launches this image with --network none.
 RUN apt-get update \
-    && apt-get install --yes --no-install-recommends bash git curl procps ca-certificates \
+    && apt-get install --yes --no-install-recommends \
+        bash git curl procps ca-certificates libstdc++6 ripgrep jq patch unzip \
     && rm -rf /var/lib/apt/lists/*
+
+# Copy the official runtimes without their source images' operating systems.
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
+COPY --from=uv /uv /uvx /usr/local/bin/
+RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 
 WORKDIR /workspace
