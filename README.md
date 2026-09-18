@@ -11,6 +11,9 @@ and change the execution sandbox. Claude Code uses the existing shell-prefix
 client at `/exec/ws`. Codex uses its exec-server protocol at `/codex`, including
 filesystem operations and native `apply_patch`.
 
+Pi can use the separate [Pi extension](pi-extension/README.md), which routes its
+shell, file, and search tools plus `!`/`!!` commands through `/exec/ws`.
+
 ## Start
 
 Requirements: an Apple silicon Mac with Apple's
