@@ -1,9 +1,12 @@
 # Team demo
 
-Use the same coding task, agent configuration, shell-prefix client, and server
-port with each prototype. Stop one server before starting the other. Only the
-server implementation changes. The demo project has a deliberate arithmetic
-bug and uses Python's standard library, so it works without package downloads.
+Use the same coding task and client protocol with each prototype. Both servers
+can run at the same time: v86 defaults to port `8686`, and this Apple Container
+server defaults to port `8687`. Select the backend by setting the shell client
+`V86_API_URL` to `http://127.0.0.1:8686` or `http://127.0.0.1:8687`, or by setting
+the Codex environment URL to the corresponding `ws://127.0.0.1:PORT/codex`
+endpoint. The demo project has a deliberate arithmetic bug and uses Python's
+standard library, so it works without package downloads.
 
 ## Prepare a fresh workspace
 
@@ -13,7 +16,7 @@ From this application's root:
 DEMO_ROOT=$(mktemp -d /private/tmp/sandbox-demo.XXXXXX)
 cp -R examples/demo-project "$DEMO_ROOT/project"
 cp -R examples/reference "$DEMO_ROOT/reference"
-uv run sandbox-exec-server --port 8686 --preserve-paths \
+uv run sandbox-exec-server --port 8687 --preserve-paths \
   --mount-rw "project=$DEMO_ROOT/project" \
   --mount-ro "reference=$DEMO_ROOT/reference"
 ```
@@ -74,7 +77,7 @@ within those mounts and removes them afterward. In another terminal, set the
 paths to the same copied directories used above:
 
 ```sh
-SANDBOX_EXEC_SERVER_URL=ws://127.0.0.1:8686/codex \
+SANDBOX_EXEC_SERVER_URL=ws://127.0.0.1:8687/codex \
 SANDBOX_TEST_RW=/absolute/path/to/demo/project \
 SANDBOX_TEST_RO=/absolute/path/to/demo/reference \
 uv run pytest -q -m integration tests/test_codex_cli.py

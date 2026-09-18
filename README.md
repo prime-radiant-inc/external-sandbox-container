@@ -22,12 +22,13 @@ Requirements: an Apple silicon Mac with Apple's
 container system start
 container image pull python:3.13-slim
 uv sync
-uv run sandbox-exec-server --port 8686 --preserve-paths \
+uv run sandbox-exec-server --port 8687 --preserve-paths \
   --mount-rw project=/absolute/path/to/project \
   --mount-ro reference=/absolute/path/to/reference
 ```
 
-The server binds to `127.0.0.1`. It creates its own container with two CPUs,
+The server defaults to `127.0.0.1:8687`, so it can run alongside the v86 server
+on port `8686`. It creates its own container with two CPUs,
 512 MiB of memory, and `--network none`. Stop the server with Ctrl-C to remove
 that container. Files in writable mounts persist on the host; other container
 changes are disposable. Host changes to mounted files remain visible.
@@ -43,8 +44,8 @@ options. `--container-bin` selects a particular Apple `container` executable.
 ## Try the existing API
 
 ```sh
-curl -sS http://127.0.0.1:8686/health
-curl -sS http://127.0.0.1:8686/exec \
+curl -sS http://127.0.0.1:8687/health
+curl -sS http://127.0.0.1:8687/exec \
   -H 'Content-Type: application/json' \
   --data '{"command":"uname -s; printf hello; printf problem >&2; exit 7"}'
 ```
@@ -59,7 +60,7 @@ The original Python streaming client is retained as
 variables are intentional compatibility details; it works with this backend.
 
 ```sh
-V86_CWD=/mnt/project uv run --quiet --script clients/v86_exec.py \
+V86_API_URL=http://127.0.0.1:8687 V86_CWD=/mnt/project uv run --quiet --script clients/v86_exec.py \
   --no-stdin 'uname -s; pwd'
 ```
 

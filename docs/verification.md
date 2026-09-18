@@ -51,7 +51,7 @@ For the full 89-test suite, start a server with preserved `project` (rw) and
 
 ```sh
 RUN_APPLE_CONTAINER_TESTS=1 \
-SANDBOX_EXEC_SERVER_URL=ws://127.0.0.1:8686/codex \
+SANDBOX_EXEC_SERVER_URL=ws://127.0.0.1:8687/codex \
 SANDBOX_TEST_RW=/absolute/path/to/project \
 SANDBOX_TEST_RO=/absolute/path/to/reference \
 uv run pytest -q

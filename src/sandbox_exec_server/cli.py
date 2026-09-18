@@ -25,7 +25,7 @@ def parser():
     result.add_argument("--backend", choices=["apple"], default="apple")
     result.add_argument("--image", default="python:3.13-slim", help="Linux OCI image with python3 and /bin/bash")
     result.add_argument("--container-bin", default="container", help="Apple Container CLI executable")
-    result.add_argument("--port", type=int, default=8686, help="Loopback TCP port; 0 selects an available port")
+    result.add_argument("--port", type=int, default=8687, help="Loopback TCP port (default: 8687); 0 selects an available port")
     result.add_argument("--cpus", type=int, default=2)
     result.add_argument("--memory", type=int, default=512, help="Container memory in MiB")
     result.add_argument("--mount", "--mount-ro", "--mount-rw", dest="mounts", action=MountAction,

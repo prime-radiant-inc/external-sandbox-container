@@ -16,7 +16,10 @@ Reference: `v86-shell-server` 0.2.0 at commit
 “v86 WASM for Claude Code” research conversation. The HTTP, streaming WebSocket,
 and Codex adapters are Python implementations of those existing contracts.
 
-Two client files are copied unchanged from that project:
+The Python client is copied unchanged from that project. The shell wrapper was
+initially copied unchanged, then given a default `V86_API_URL` of
+`http://127.0.0.1:8687` so both servers can run side by side. The hashes below
+identify the original source files:
 
 | File | SHA-256 |
 | --- | --- |
