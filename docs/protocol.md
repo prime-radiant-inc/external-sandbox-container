@@ -89,8 +89,9 @@ platform sandboxes, remote extension execution, or the App Server's
 
 - Linux runs in Apple's container runtime rather than an x86 emulator.
 - Docker is a possible future backend, not an accepted backend in this version.
-- The v86 managed network proxy is absent. The container starts with
-  `--network none`; proxy/credential-policy options are not silently accepted.
+- The container starts with `--network none`. Optional `--proxy-config` enables
+  HTTP(S) egress through the command pipe to a host Python proxy, using the v86
+  allow-list/credential configuration schema. See [proxy details](proxy.md).
 - Filesystem ownership, permissions, links, and metadata follow Apple's shared
   filesystem behavior. v86-specific host filesystem guarantees are not claimed.
   Read-only protection belongs to each mount, rather than v86's per-inode host
@@ -99,4 +100,5 @@ platform sandboxes, remote extension execution, or the App Server's
   directories are not detected. Do not share such aliases when relying on a
   read-only mount: writes through the writable name can change the same inode.
 - The default image is intentionally small. Tools must be present in the image
-  before offline execution begins.
+  for offline execution, or their download destinations explicitly allowed by
+  the optional proxy.

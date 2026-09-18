@@ -61,7 +61,9 @@ The build options follow Apple's
 Then pass `--image sandbox-demo:latest` to `uv run sandbox-exec-server` alongside
 the same mount options. Image building and package downloads happen before the
 execution sandbox starts; commands still run with `--network none`. Having curl
-installed does not give the offline container network access.
+installed does not give the offline container network access. To grant selected
+HTTP(S) access without enabling a network interface, use the optional
+[host-managed proxy](proxy.md).
 
 ## Verification
 

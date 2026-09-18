@@ -1,7 +1,7 @@
 # Verification — 18 September 2026
 
-The final combined suite passed: **89 tests, zero failures, zero skips**
-(`89 passed in 5.89s`).
+The final combined suite passed: **220 tests, zero failures, zero skips**
+(`220 passed in 7.92s`). The Codex tests ran against a proxy-enabled server.
 
 | Layer | Tests | Evidence |
 | --- | ---: | --- |
@@ -9,6 +9,18 @@ The final combined suite passed: **89 tests, zero failures, zero skips**
 | Real Apple Container backend | 7 | Binary streaming, exact argv, environment replacement, live RO/RW mounts, no eth0, signals, timeouts, output limits, filesystem RPC, concurrent processes, descendant cleanup |
 | Original Python client + real container API | 4 | 256 KiB all-byte-values round trip, separate binary stderr, exit 23, mount cwd translation, timeout, abrupt/graceful disconnect cleanup |
 | Real Codex CLI / App Server | 2 | Remote execution, native apply_patch success and read-only denial; local-only shell shortcut rejected |
+| Host proxy policy and HTTP/TLS engine | 63 | Exact rules, checked/pinned DNS, strict TLS trust and hostname validation, credential substitution, redaction, SSE, malformed requests, bounds, policy revocation |
+| Guest proxy transport | 24 | Fixed destination, bounded ACK windows, hostile frames, concurrent binary streams, public CA setup, HTTPS through both relays |
+| Management UI/API | 34 | Origin and token checks, safe rendering, bounded input, atomic policy edits, unchanged execution API browser restrictions |
+| Proxy CLI lifecycle | 5 | Explicit opt-in, early configuration failure, startup failure cleanup, cancellation |
+| Real Apple Container proxy route | 5 | Verified HTTPS, 256 KiB binary upload, host-only credentials, response redaction, denied destinations/paths, no direct network, SSE plus command RPC, live policy changes |
+
+A separate public-network smoke test ran an ordinary guest Python `urllib`
+request to the explicitly allowed `https://example.com` origin and received
+HTTP 200 with external container networking still disabled. Browser verification
+opened the actual management page, applied an empty allow-list, executed a
+blocked guest request, and confirmed its 403 entry appeared in the activity log.
+Proxy credential tests used synthetic credentials and local HTTPS fixtures.
 
 The Codex CLI test uses deterministic responses from a temporary localhost model
 fixture. The CLI, transport, filesystem operations and container are real; no
@@ -46,8 +58,10 @@ RUN_APPLE_CONTAINER_TESTS=1 uv run pytest -q \
   tests/test_apple_integration.py tests/test_real_clients.py
 ```
 
-For the full 89-test suite, start a server with preserved `project` (rw) and
-`reference` (ro) mounts using [the demo instructions](demo.md), then run:
+For the full 220-test suite, start a server with `project` (rw) and
+`reference` (ro) mounts using [the demo instructions](demo.md). Add
+`--proxy-config examples/proxy-public.json` to reproduce the proxy-enabled
+Codex run, then run:
 
 ```sh
 RUN_APPLE_CONTAINER_TESTS=1 \
@@ -61,14 +75,22 @@ uv run pytest -q
 Tests create unique fixture directories beneath the two shared mount roots and
 remove them afterward.
 
+The self-contained proxy integration suite can also run on its own:
+
+```sh
+RUN_APPLE_CONTAINER_TESTS=1 uv run pytest -q tests/test_proxy_integration.py
+```
+
 ## Packaging and cleanup
 
-`uv run ruff check .` and `uv build` passed. A built wheel was installed in a
-separate temporary uv environment, with no import from the source checkout.
-That installed app successfully booted an Apple Container and served both
-HTTP command execution and binary Codex filesystem operations. SIGTERM shut it
-down normally. Source distributions include the clients, docs, examples, tests
-and lockfile.
+`uv run ruff check .`, `git diff --check`, and `uv build` passed. The rebuilt
+proxy-enabled wheel was installed in a separate uv environment, with no import
+from the source checkout. That installed app booted an Apple Container, served
+the health and management UI endpoints, and completed a verified guest HTTPS
+request through the proxy with HTTP 200. The earlier base-server wheel check
+also covered HTTP command execution and binary Codex filesystem operations.
+Normal shutdown removed the containers. Source distributions include the
+clients, docs, examples, tests and lockfile.
 
 No global agent configuration was changed. Test-owned containers were removed;
 the pre-existing v86 server and unrelated Apple containers were left alone.

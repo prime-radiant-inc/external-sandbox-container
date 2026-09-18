@@ -10,6 +10,7 @@ from aiohttp import web
 
 from .api import create_app
 from .backend import AppleContainerBackend, parse_mounts
+from .proxy import HostProxy, load_policy
 
 
 class MountAction(argparse.Action):
@@ -31,6 +32,7 @@ def parser():
     result.add_argument("--mount", "--mount-ro", "--mount-rw", dest="mounts", action=MountAction,
                         metavar="[NAME=]PATH", help="Share a host directory; --mount is read-write")
     result.add_argument("--preserve-paths", action="store_true", help="Also mount host directories at their original absolute paths")
+    result.add_argument("--proxy-config", metavar="PATH", help="Enable host-enforced HTTP(S) egress using this allow-list JSON file")
     return result
 
 
@@ -40,14 +42,20 @@ async def serve(args):
     if not 1 <= args.cpus <= 64 or not 128 <= args.memory <= 65536:
         raise ValueError("CPUs must be 1–64 and memory 128–65536 MiB")
     mounts = parse_mounts([*(args.mounts or []), *((path, "rw") for path in args.paths)], args.preserve_paths)
+    proxy = HostProxy(load_policy(args.proxy_config)) if args.proxy_config else None
     backend = AppleContainerBackend(mounts, image=args.image, container_bin=args.container_bin,
-                                    cpus=args.cpus, memory=args.memory)
+                                    cpus=args.cpus, memory=args.memory, proxy=proxy)
     runner = None
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, stop.set)
-    boot = asyncio.create_task(backend.boot())
+    async def start_sandbox():
+        if proxy:
+            await proxy.start()
+        await backend.boot()
+
+    boot = asyncio.create_task(start_sandbox())
     stopping = asyncio.create_task(stop.wait())
     try:
         done, _ = await asyncio.wait([boot, stopping], return_when=asyncio.FIRST_COMPLETED)
@@ -57,24 +65,39 @@ async def serve(args):
                 await boot
             return
         await boot
-        app = create_app(backend)
+        app = create_app(backend, proxy=proxy)
         runner = web.AppRunner(app, handler_cancellation=True, shutdown_timeout=5)
         await runner.setup()
         site = web.TCPSite(runner, "127.0.0.1", args.port)
         await site.start()
         port = site._server.sockets[0].getsockname()[1]
-        print(json.dumps({"event": "listening", "url": f"http://127.0.0.1:{port}", **backend.info()}), flush=True)
+        info = {"event": "listening", "url": f"http://127.0.0.1:{port}", **backend.info()}
+        if proxy:
+            info["proxyManagementUrl"] = f"http://127.0.0.1:{port}/proxy"
+        print(json.dumps(info), flush=True)
         # Loss of the sandbox is fatal. Never keep serving against a missing backend.
         done, _ = await asyncio.wait([stopping, backend.reader_task], return_when=asyncio.FIRST_COMPLETED)
         if backend.reader_task in done and not stop.is_set():
             raise RuntimeError("Container agent stopped unexpectedly")
     finally:
         stopping.cancel()
-        if runner:
-            await runner.cleanup()
-        await backend.close()
-        for sig in (signal.SIGINT, signal.SIGTERM):
-            loop.remove_signal_handler(sig)
+        if not boot.done():
+            boot.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await boot
+        try:
+            if runner:
+                await runner.cleanup()
+        finally:
+            try:
+                await backend.close()
+            finally:
+                try:
+                    if proxy:
+                        await proxy.close()
+                finally:
+                    for sig in (signal.SIGINT, signal.SIGTERM):
+                        loop.remove_signal_handler(sig)
 
 
 def main():

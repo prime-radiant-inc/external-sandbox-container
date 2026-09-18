@@ -107,6 +107,21 @@ def test_literal_redactor_chunk_boundaries_and_sse():
     assert redactor.feed(b"ababa") + redactor.feed(b"", final=True) == b"[REDACTED]"
 
 
+def test_activity_redacts_long_secrets_before_truncation():
+    import time
+
+    secret = "synthetic-private-" + "s" * 3000
+    policy = ProxyPolicy.from_config({"allow": [{
+        "origin": "https://example.test", "credential": {
+            "header": "Authorization", "placeholder": "public-token", "secretEnv": "LONG_KEY",
+        },
+    }]}, {"LONG_KEY": secret})
+    proxy = HostProxy(policy)
+    proxy._event(policy, time.monotonic(), "GET", "https://example.test/" + secret,
+                 403, "denied", "policy_denied")
+    assert proxy.snapshot()["events"][-1]["path"] == "/[REDACTED]"
+
+
 async def test_http_binary_request_redirect_and_hop_header_filtering():
     received = []
 

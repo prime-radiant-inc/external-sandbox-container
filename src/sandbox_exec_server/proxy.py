@@ -236,7 +236,10 @@ class HostProxy:
                 path = parts.path or "/"
         event = {
             "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "method": method[:32], "origin": origin[:512], "path": path[:2048],
+            # Redact before truncation so a display limit cannot reveal the
+            # beginning of a long credential embedded in a malicious pathname.
+            "method": policy.redact(method)[:32], "origin": policy.redact(origin)[:512],
+            "path": policy.redact(path)[:2048],
             "status": status, "decision": decision, "reason": reason,
             "durationMs": round((time.monotonic() - start) * 1000),
             "credentialInjected": bool(injected),
@@ -467,16 +470,22 @@ class HostProxy:
                 await asyncio.wait_for(writer.drain(), timeout=IDLE_TIMEOUT)
                 redactor = LiteralRedactor(policy.secret_values)
                 total = 0
+                sent = 0
                 async for chunk in response.content.iter_chunked(65536):
                     total += len(chunk)
                     if total > MAX_RESPONSE:
                         raise ProxyFailure(502, "response_too_large")
                     filtered = redactor.feed(chunk)
                     if filtered:
+                        sent += len(filtered)
+                        if sent > MAX_RESPONSE:
+                            raise ProxyFailure(502, "response_too_large")
                         writer.write(connection.send(h11.Data(data=filtered)))
                         await asyncio.wait_for(writer.drain(), timeout=IDLE_TIMEOUT)
                 final = redactor.feed(b"", final=True)
                 if final:
+                    if sent + len(final) > MAX_RESPONSE:
+                        raise ProxyFailure(502, "response_too_large")
                     writer.write(connection.send(h11.Data(data=final)))
                 writer.write(connection.send(h11.EndOfMessage()))
                 await asyncio.wait_for(writer.drain(), timeout=IDLE_TIMEOUT)

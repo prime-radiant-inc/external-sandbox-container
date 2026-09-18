@@ -67,6 +67,29 @@ V86_API_URL=http://127.0.0.1:8687 V86_CWD=/mnt/project uv run --quiet --script c
 See [agent setup](docs/agents.md), [protocol compatibility](docs/protocol.md),
 and [a repeatable team demo](docs/demo.md).
 
+## Controlled network access
+
+The container remains offline unless you opt into a host-enforced HTTP(S) proxy:
+
+```sh
+uv run sandbox-exec-server --proxy-config examples/proxy-public.json
+```
+
+This example permits GET/HEAD requests to `https://example.com` only. Open
+`http://127.0.0.1:8687/proxy` to edit the policy and inspect recent requests.
+Changes in the UI apply to the running server; save your JSON separately to
+reuse it after restarting. See [proxy setup and security](docs/proxy.md).
+
+Commands receive ordinary proxy environment variables and a public CA
+certificate. A small guest listener relays traffic over the existing command
+pipe to the proxy in the host Python process. The container still uses
+`--network none`; removing proxy settings cannot enable direct network access.
+
+[examples/proxy.json](examples/proxy.json) also demonstrates substituting a
+placeholder with an API key from the host environment. It requires
+`OPENAI_API_KEY` on the host before startup. Real keys are not passed to the
+container or displayed by the management UI.
+
 ## Scope
 
 - Submitted commands and Codex filesystem operations run inside the container.
@@ -78,15 +101,17 @@ and [a repeatable team demo](docs/demo.md).
   immediate host changes; read-only mounts use the runtime's read-only setting.
   Do not expose a writable hardlink alias of a file in a read-only mount. This
   backend does not reproduce v86's per-inode hardlink restrictions.
-- Container networking is disabled. Image acquisition occurs on the host.
-  The v86 prototype's managed proxy, credential substitution, and network
-  allowlists are **not implemented** here.
+- Container networking is disabled. Optional HTTP(S) egress travels over the
+  command pipe to the host proxy, which enforces the allow-list and substitutes
+  credentials. Image acquisition occurs on the host.
 - Codex and Claude themselves, model traffic, and host extensions remain on the
   host. Claude's native Read/Edit tools are not redirected by a shell prefix.
 - Codex is configured with `include_local = false`. Its local-only `!command`
   shortcut must fail. Do not add a local executor to make it work.
-- The listener is for trusted local clients, without authentication. It rejects
-  browser Origin requests; other processes on the machine can access it.
+- The execution listener is for trusted local clients, without authentication.
+  Execution routes reject browser Origin requests. The proxy management UI
+  permits same-origin access and protects its JSON API with a per-run token;
+  trusted local processes can still access the server.
 
 This demonstrates interchangeable execution routes, not a claim that every
 operation performed by an agent is contained. Isolation and filesystem details
@@ -99,8 +124,8 @@ remains deliberately small.
 
 ## Test
 
-The recorded run passed **89 tests**, including real Apple Containers, the
-unchanged Python client, and Codex CLI 0.154.0. See [verification](docs/verification.md)
+The recorded run passed **220 tests**, including the managed proxy, real Apple
+Containers, the unchanged Python client, and Codex CLI 0.154.0. See [verification](docs/verification.md)
 for the tested image digest, package checks, and reproducible commands.
 
 ```sh

@@ -122,7 +122,9 @@ Activity retains the most recent 500 completed/denied requests, including
 timestamp, method, origin, path, status, duration, result, and whether a
 credential was inserted. It excludes query strings, request/response bodies,
 headers, resolver details, and exception messages. Known secrets are redacted
-from metadata too. Events are in memory only and disappear on shutdown.
+from metadata before applying display-length limits. The response size limit
+applies both before and after redaction. Events are in memory only and disappear
+on shutdown.
 
 ## Validation
 
