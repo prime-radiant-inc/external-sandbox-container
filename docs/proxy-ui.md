@@ -48,9 +48,10 @@ same-origin API requests. Responses are not cached.
 
 Any local process capable of fetching the page can obtain the token; it is a
 browser cross-origin protection, not authentication between mutually untrusted
-host users. The execution and Codex APIs retain their existing browser Origin
-restriction. The only exceptions are `/proxy` and `/proxy/api`, which perform
-their own origin and token checks.
+host users. The buffered execution and Codex APIs retain their browser Origin
+restriction. The [terminal homepage](terminal.md) uses a separate token and
+same-origin check for `/exec/ws`. Management routes `/proxy` and `/proxy/api`
+perform their own origin and token checks.
 
 For programmatic local management, fetch `/proxy`, extract its `proxy-token`
 meta value, then send the token in `X-Proxy-Token` to:

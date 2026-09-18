@@ -42,7 +42,16 @@ def _json(value: Any, status: int = 200, headers: dict | None = None) -> web.Res
 
 
 def check_browser_access(request: web.Request) -> None:
-    if "Origin" in request.headers and request.path not in {"/proxy", "/proxy/api"}:
+    if request.path in {"/", "/terminal.js"}:
+        from .terminal import check_terminal_access
+
+        check_terminal_access(request)
+    elif request.path == "/exec/ws" and ("Origin" in request.headers or any(
+            key.lower().startswith("sec-fetch-") for key in request.headers)):
+        from .terminal import check_terminal_access
+
+        check_terminal_access(request, websocket=True)
+    elif "Origin" in request.headers and request.path not in {"/proxy", "/proxy/api"}:
         raise RequestError(403, "Browser Origin requests are not allowed.")
     hosts = request.headers.getall("Host", [])
     match = re.fullmatch(r"(?:localhost|127\.0\.0\.1|\[::1\])(?::([0-9]{1,5}))?", hosts[0], re.I) if len(hosts) == 1 else None
@@ -454,7 +463,8 @@ class ShellSession:
 
 
 async def _websocket(request):
-    ws = web.WebSocketResponse(max_msg_size=MAX_BODY_BYTES, compress=False, autoping=True)
+    ws = web.WebSocketResponse(max_msg_size=MAX_BODY_BYTES, compress=False, autoping=True,
+                              protocols=("sandbox-terminal",))
     await ws.prepare(request)
     session = ShellSession(request, ws)
     request.app[SHELL_SESSIONS].add(session)
@@ -478,6 +488,7 @@ async def _shutdown(app):
 
 def create_app(backend, proxy=None) -> web.Application:
     from .codex import codex_handler
+    from .terminal import install_terminal
 
     # Some aiohttp versions reject at >= their limit; enforce our exact limit above.
     app = web.Application(middlewares=[_errors], client_max_size=MAX_BODY_BYTES + 1)
@@ -485,6 +496,7 @@ def create_app(backend, proxy=None) -> web.Application:
     app[SHELL_SESSIONS] = set()
     app[CODEX_CONNECTIONS] = set()
     app[HTTP_EXECUTIONS] = set()
+    install_terminal(app, backend)
     app.router.add_get("/health", _health, allow_head=False)
     app.router.add_get("/mounts", _mounts, allow_head=False)
     app.router.add_post("/exec", _execute)

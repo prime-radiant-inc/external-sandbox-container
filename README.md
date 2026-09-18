@@ -41,6 +41,19 @@ working directory; without mounts, it is `/workspace`.
 Run `uv run sandbox-exec-server --help` for image, resource, and container CLI
 options. `--container-bin` selects a particular Apple `container` executable.
 
+## Browser terminal
+
+Open `http://127.0.0.1:8687/` to run commands through the existing WebSocket API.
+Output appears as it arrives. While a command runs, the input box sends lines
+to its stdin; **Send EOF** closes stdin and **Cancel** stops the command.
+The page also provides command history, a working-directory field, a time
+limit, and examples for streaming output, interactive input, and HTTPS access.
+
+Each run starts a new shell in the same container. Files persist between runs;
+use the working-directory field instead of expecting a previous `cd` to carry
+over. This uses pipes, not a PTY. For a Python REPL, run `python3 -u -i`.
+See [terminal controls and behavior](docs/terminal.md).
+
 ## Try the existing API
 
 ```sh
@@ -108,10 +121,10 @@ container or displayed by the management UI.
   host. Claude's native Read/Edit tools are not redirected by a shell prefix.
 - Codex is configured with `include_local = false`. Its local-only `!command`
   shortcut must fail. Do not add a local executor to make it work.
-- The execution listener is for trusted local clients, without authentication.
-  Execution routes reject browser Origin requests. The proxy management UI
-  permits same-origin access and protects its JSON API with a per-run token;
-  trusted local processes can still access the server.
+- The execution listener is for trusted local clients. The browser terminal
+  requires a same-origin WebSocket and a per-run token; other execution routes
+  reject browser Origin requests. The proxy management UI has its own token.
+  Trusted local command-line clients retain their existing API access.
 
 This demonstrates interchangeable execution routes, not a claim that every
 operation performed by an agent is contained. Isolation and filesystem details
@@ -124,12 +137,15 @@ remains deliberately small.
 
 ## Test
 
-The recorded run passed **220 tests**, including the managed proxy, real Apple
-Containers, the unchanged Python client, and Codex CLI 0.154.0. See [verification](docs/verification.md)
-for the tested image digest, package checks, and reproducible commands.
+The proxy baseline passed **220 tests**, including real Apple Containers, the
+unchanged Python client, and Codex CLI 0.154.0. The terminal update passed **250
+Python tests and 15 JavaScript tests**; the two separately configured Codex tests
+were not repeated in that run. See [verification](docs/verification.md) for the
+tested image digest, package checks, and reproducible commands.
 
 ```sh
 uv run pytest -m 'not integration'
+node --test tests/test_terminal_js.mjs
 ```
 
 Tests marked `integration` use the real container runtime or installed agent

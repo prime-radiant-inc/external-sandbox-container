@@ -1,6 +1,7 @@
 # Verification — 18 September 2026
 
-The final combined suite passed: **220 tests, zero failures, zero skips**
+Before the terminal homepage was added, the combined proxy suite passed:
+**220 tests, zero failures, zero skips**
 (`220 passed in 7.92s`). The Codex tests ran against a proxy-enabled server.
 
 | Layer | Tests | Evidence |
@@ -28,6 +29,31 @@ paid inference or live Claude conversation is claimed. The App Server test
 checks the precise `local environment is not configured` error for
 `thread/shellCommand`, with no command execution events and no inference call.
 Both use isolated temporary Codex configurations.
+
+## Terminal homepage
+
+After adding the browser terminal, **250 Python tests passed** (`250 passed in
+6.70s`), including the real Apple Container and original client integration
+tests. This run included 32 new terminal tests and excluded the two Codex CLI
+tests, which require a separately configured server with host mounts and had
+passed in the proxy baseline above. The existing no-mount demo server was left
+available for interactive use.
+
+The terminal tests cover streamed stdout/stderr, stdin acknowledgments, EOF,
+cancellation, disconnect cleanup, browser origin and token checks, ambiguous
+headers, cross-server token rejection, safe HTML rendering, and compatibility
+with existing command-line clients. **15 JavaScript tests passed** under Node
+26.3.0, covering split UTF-8 output, bounded scrollback and history, stdin flow
+control, cancellation races, browser timer callbacks, and page-cache restoration.
+The actual browser homepage was also checked visually and used to run commands
+through the WebSocket API.
+
+Reproduce the terminal verification without a separately configured Codex server:
+
+```sh
+RUN_APPLE_CONTAINER_TESTS=1 uv run pytest -q --ignore=tests/test_codex_cli.py
+node --test tests/test_terminal_js.mjs
+```
 
 ## Versions
 
@@ -58,7 +84,7 @@ RUN_APPLE_CONTAINER_TESTS=1 uv run pytest -q \
   tests/test_apple_integration.py tests/test_real_clients.py
 ```
 
-For the full 220-test suite, start a server with `project` (rw) and
+For the full Python suite, start a server with `project` (rw) and
 `reference` (ro) mounts using [the demo instructions](demo.md). Add
 `--proxy-config examples/proxy-public.json` to reproduce the proxy-enabled
 Codex run, then run:
@@ -91,6 +117,11 @@ request through the proxy with HTTP 200. The earlier base-server wheel check
 also covered HTTP command execution and binary Codex filesystem operations.
 Normal shutdown removed the containers. Source distributions include the
 clients, docs, examples, tests and lockfile.
+
+The terminal update also passed lint, whitespace checks, and `uv build`.
+Archive inspection confirmed that the wheel contains both `terminal.py` and
+`terminal.js`, and that the source distribution includes the terminal docs and
+both Python and JavaScript tests.
 
 No global agent configuration was changed. Test-owned containers were removed;
 the pre-existing v86 server and unrelated Apple containers were left alone.

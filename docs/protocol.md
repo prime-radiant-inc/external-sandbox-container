@@ -7,6 +7,8 @@ implementation naturally differ.
 
 | Route | Behavior |
 | --- | --- |
+| `GET /` | Browser command terminal |
+| `GET /terminal.js` | Bundled WebSocket terminal client |
 | `GET /health` | Runtime readiness, mount mappings, default cwd, active commands |
 | `GET /mounts` | `{ "mounts": [...] }` with host/guest paths and modes |
 | `POST /exec` | Buffered Bash command execution |
@@ -64,8 +66,18 @@ exit codes are preserved by the existing Python client; signals map to
 No host or image environment is implicitly passed to submitted commands. The
 guest agent supplies a fixed minimal environment with Linux `PATH`, `HOME`,
 `SHELL`, `USER`, `LOGNAME`, and locale settings. Explicit request environment
-fields control guest variables. Passing an API key in an explicit request would still
-put that key inside the container; this backend has no credential substitution.
+fields control guest variables. With the optional managed proxy, defaults also
+include proxy/CA settings and configured placeholders. Passing a real API key
+in an explicit request still puts that key inside the container; use
+[host proxy credential substitution](proxy.md) to keep it outside instead.
+
+The browser terminal uses the same `/exec/ws` message shapes. Browser upgrades
+require an exact same-origin `Origin` and the page's per-server token offered
+as `sandbox-token.<token>` alongside the `sandbox-terminal` WebSocket subprotocol.
+The server negotiates only `sandbox-terminal`, never the token. Originless
+command-line clients without browser Fetch Metadata keep their existing access;
+no token or subprotocol is required for those clients. The buffered `/exec` and
+Codex routes continue to reject browser Origin requests.
 
 ## Codex exec-server
 
