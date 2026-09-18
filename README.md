@@ -130,7 +130,8 @@ This demonstrates interchangeable execution routes, not a claim that every
 operation performed by an agent is contained. Isolation and filesystem details
 differ between Apple's container runtime and the v86 prototype.
 
-For an image with Git and curl in addition to Python and Bash, see
+For an image with curl, Git, procps (`ps`), and CA certificates in addition to
+Python and Bash, see
 [the example Containerfile](examples/Containerfile) and
 [image build instructions](docs/demo.md#optional-tool-image). The default image
 remains deliberately small.

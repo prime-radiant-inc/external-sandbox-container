@@ -48,8 +48,9 @@ is intentionally unavailable.
 ## Optional tool image
 
 The default Python image is enough for this arithmetic demo. The included
-`examples/Containerfile` adds Git, curl, and CA certificates for broader coding
-tasks. Build it while host networking is available:
+`examples/Containerfile` adds curl, Git, procps (including `ps`), and CA
+certificates for broader coding tasks. Build it while host networking is
+available:
 
 ```sh
 container build --tag sandbox-demo:latest --file examples/Containerfile .
@@ -64,6 +65,14 @@ execution sandbox starts; commands still run with `--network none`. Having curl
 installed does not give the offline container network access. To grant selected
 HTTP(S) access without enabling a network interface, use the optional
 [host-managed proxy](proxy.md).
+
+In the browser terminal at `http://127.0.0.1:8687/`, check the installed tools:
+
+```sh
+curl --version
+git --version
+ps -ef
+```
 
 ## Verification
 

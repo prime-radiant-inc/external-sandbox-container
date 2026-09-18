@@ -68,6 +68,31 @@ To repeat with exactly that image, pass
 `--image python@sha256:9d2e5553305c7c7b0097999bb17187c69b921ccd6bc9d40e4bb5ebe652c00285`.
 The default tag may advance in the registry.
 
+## Optional tool image
+
+Built `sandbox-demo:latest` from `examples/Containerfile`, adding curl, Git,
+procps (`ps`), and CA certificates to the Python base. The resulting image
+index digest was
+`sha256:25a276ba2d475db6e56ef4f85a31278bc75685302603fc992381c2007540fb91`.
+All **16 existing container, original-client, and proxy integration tests**
+passed against this image (`16 passed in 5.80s`):
+
+```sh
+container build --tag sandbox-demo:latest --file examples/Containerfile .
+RUN_APPLE_CONTAINER_TESTS=1 SANDBOX_TEST_IMAGE=sandbox-demo:latest \
+uv run pytest -q tests/test_apple_integration.py tests/test_real_clients.py \
+  tests/test_proxy_integration.py
+```
+
+The running demo was then restarted with `--image sandbox-demo:latest`,
+preserving its live proxy policy. A smoke check used the browser terminal's
+same-origin, token-protected WebSocket route and confirmed curl 8.14.1,
+Git 2.47.3, and procps-ng 4.0.4. `ps -ef` listed the guest processes.
+`curl -fsS https://example.com` received HTTP 200 using the configured proxy
+and CA; a request to the unlisted `https://example.org` received HTTP 403.
+A curl request with the proxy bypassed and a supplied destination IP failed
+to connect, and `/sys/class/net` still contained only `lo`.
+
 ## Reproduce
 
 Run the local protocol tests:
@@ -125,6 +150,5 @@ both Python and JavaScript tests.
 
 No global agent configuration was changed. Test-owned containers were removed;
 the pre-existing v86 server and unrelated Apple containers were left alone.
-The optional Git/curl image recipe is supplied but was not built during these
-checks. See [the protocol differences](protocol.md#deliberate-differences) for
+See [the protocol differences](protocol.md#deliberate-differences) for
 networking, mount, and runtime scope.
