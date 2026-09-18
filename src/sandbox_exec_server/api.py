@@ -42,7 +42,7 @@ def _json(value: Any, status: int = 200, headers: dict | None = None) -> web.Res
 
 
 def check_browser_access(request: web.Request) -> None:
-    if "Origin" in request.headers:
+    if "Origin" in request.headers and request.path not in {"/proxy", "/proxy/api"}:
         raise RequestError(403, "Browser Origin requests are not allowed.")
     hosts = request.headers.getall("Host", [])
     match = re.fullmatch(r"(?:localhost|127\.0\.0\.1|\[::1\])(?::([0-9]{1,5}))?", hosts[0], re.I) if len(hosts) == 1 else None
@@ -476,7 +476,7 @@ async def _shutdown(app):
     await asyncio.gather(*executions, return_exceptions=True)
 
 
-def create_app(backend) -> web.Application:
+def create_app(backend, proxy=None) -> web.Application:
     from .codex import codex_handler
 
     # Some aiohttp versions reject at >= their limit; enforce our exact limit above.
@@ -490,5 +490,9 @@ def create_app(backend) -> web.Application:
     app.router.add_post("/exec", _execute)
     app.router.add_get("/exec/ws", _websocket, allow_head=False)
     app.router.add_get("/codex", codex_handler, allow_head=False)
+    if proxy is not None:
+        from .proxy_management import install_proxy_management
+
+        install_proxy_management(app, proxy)
     app.on_shutdown.append(_shutdown)
     return app
