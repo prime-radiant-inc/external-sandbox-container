@@ -1,0 +1,9 @@
+FROM python:3.13-slim
+
+# Network is used to prepare the image, before the execution sandbox starts.
+# At runtime sandbox-exec-server still launches this image with --network none.
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends bash git curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
