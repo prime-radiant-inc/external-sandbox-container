@@ -365,3 +365,69 @@ async def test_malformed_guest_frame_disconnects_transport_and_closes_relays(mon
     await asyncio.wait_for(backend.reader_task, 1)
     assert backend.proxy_relay.closed and child.returncode == 0
     await backend.close()
+
+
+async def test_verified_https_and_credential_substitution_through_full_relay():
+    """Default Python TLS verification must work through CONNECT and both relays."""
+    from aiohttp import web
+    import h11
+    from sandbox_exec_server.proxy import HostProxy, ProxyPolicy
+    from sandbox_exec_server.proxy_certificates import CertificateAuthority
+
+    payload = os.urandom(256 * 1024)
+    seen = []
+    upstream_ca = CertificateAuthority()
+
+    async def handle(request):
+        seen.append((request.headers.get("Authorization"), await request.read()))
+        return web.Response(body=b"upstream-ok:integration-fake-key")
+
+    app = web.Application()
+    app.router.add_post("/test", handle)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "127.0.0.1", 0, ssl_context=upstream_ca.server_context("127.0.0.1"))
+    await site.start()
+    port = site._server.sockets[0].getsockname()[1]
+    authority = f"127.0.0.1:{port}"
+    policy = ProxyPolicy.from_config({"allow": [{"origin": f"https://{authority}",
+        "allowCidrs": ["127.0.0.1/32"], "credential": {"header": "Authorization",
+        "placeholder": "placeholder", "secretEnv": "TEST_KEY", "prefix": "Bearer "}}]},
+        {"TEST_KEY": "integration-fake-key"})
+    proxy = HostProxy(policy, upstream_ssl_context=ssl.create_default_context(cadata=upstream_ca.pem))
+    await proxy.start()
+    writer = None
+    try:
+        async with relay_pair(proxy.address) as (_, _, address, _):
+            reader, writer = await asyncio.open_connection(*address)
+            writer.write(f"CONNECT {authority} HTTP/1.1\r\nHost: {authority}\r\n\r\n".encode())
+            await writer.drain()
+            reply = await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), 3)
+            assert reply.startswith(b"HTTP/1.1 200")
+            await writer.start_tls(ssl.create_default_context(cadata=proxy.ca_pem), server_hostname="127.0.0.1")
+            connection = h11.Connection(h11.CLIENT)
+            writer.write(connection.send(h11.Request(method="POST", target="/test", headers=[
+                ("Host", authority), ("Authorization", "placeholder"),
+                ("Content-Length", str(len(payload))), ("Connection", "close")])))
+            writer.write(connection.send(h11.Data(data=payload)))
+            writer.write(connection.send(h11.EndOfMessage()))
+            await writer.drain()
+            body = bytearray()
+            async with asyncio.timeout(10):
+                while True:
+                    event = connection.next_event()
+                    if event is h11.NEED_DATA:
+                        connection.receive_data(await reader.read(32768))
+                    elif isinstance(event, h11.Data):
+                        body.extend(event.data)
+                    elif isinstance(event, h11.Response):
+                        assert event.status_code == 200
+                    elif isinstance(event, h11.EndOfMessage):
+                        break
+            assert body == b"upstream-ok:[REDACTED]"
+            assert seen == [("Bearer integration-fake-key", payload)]
+    finally:
+        if writer is not None:
+            writer.close()
+        await proxy.close()
+        await runner.cleanup()
