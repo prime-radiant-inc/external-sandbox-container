@@ -1,6 +1,6 @@
 # remote-sandbox-container
 
-A Python execution server for coding agents, managed with `uv`. It implements the shared [remote sandbox protocol](../remote-sandbox/SPEC.md), alongside [remote-sandbox-v86](../remote-sandbox-v86), and executes commands in a Linux container managed by Apple's `container` CLI. This version implements Apple Container only.
+A Python execution server for coding agents, managed with `uv`. It implements the shared [remote sandbox protocol](https://github.com/prime-radiant-inc/remote-sandbox/blob/main/SPEC.md), alongside [remote-sandbox-v86](https://github.com/prime-radiant-inc/remote-sandbox-v86), and executes commands in a Linux container managed by Apple's `container` CLI. This version implements Apple Container only.
 
 The experiment: keep the coding-agent integration and client protocol constant,
 and change the execution sandbox. Claude Code uses the existing shell-prefix
