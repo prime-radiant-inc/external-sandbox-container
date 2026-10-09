@@ -1,5 +1,4 @@
 """Setup export works without a server and preserves existing user files."""
-import os
 import sys
 from importlib.resources import files
 
@@ -15,12 +14,9 @@ def test_cli_exports_bundled_files_without_starting_server(tmp_path, monkeypatch
     monkeypatch.setattr(cli, "serve", lambda args: pytest.fail("Must not start the server"))
     cli.main()
     assert str(target.resolve()) in capsys.readouterr().out
-    assert {p.name for p in target.iterdir()} == set(SETUP_FILES)
+    assert {p.name for p in target.iterdir()} == {"Containerfile", "proxy.json"}
     for name in SETUP_FILES:
         assert (target / name).read_bytes() == files("remote_sandbox_container").joinpath("resources", name).read_bytes()
-    assert "remote_sandbox_exec.py" in SETUP_FILES
-    assert "remote_sandbox_exec.py" in (target / "claude-shell-prefix.sh").read_text()
-    assert os.access(target / "claude-shell-prefix.sh", os.X_OK)
     mtimes = {p.name: p.stat().st_mtime_ns for p in target.iterdir()}
     assert write_setup(target) == target.resolve()
     assert {p.name: p.stat().st_mtime_ns for p in target.iterdir()} == mtimes
@@ -30,11 +26,11 @@ def test_cli_exports_bundled_files_without_starting_server(tmp_path, monkeypatch
 def test_output_conflicts_fail_before_writing_any_files(tmp_path, kind):
     target = tmp_path / "setup"
     target.mkdir()
-    conflict = target / "remote_sandbox_exec.py"
+    conflict = target / "proxy.json"
     original = tmp_path / "original"
     original.write_text("keep me")
     if kind == "edited":
-        conflict.write_text("custom client")
+        conflict.write_text("custom policy")
     elif kind == "directory":
         conflict.mkdir()
     else:
@@ -44,7 +40,7 @@ def test_output_conflicts_fail_before_writing_any_files(tmp_path, kind):
     assert list(target.iterdir()) == [conflict]
     assert original.read_text() == "keep me"
     if kind == "edited":
-        assert conflict.read_text() == "custom client"
+        assert conflict.read_text() == "custom policy"
 
 
 @pytest.mark.parametrize("kind", ["file", "symlink", "dangling-symlink"])

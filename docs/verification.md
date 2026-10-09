@@ -191,3 +191,16 @@ No global agent configuration was changed. Test-owned containers were removed;
 the pre-existing v86 server and unrelated Apple containers were left alone.
 See [the protocol differences](protocol.md#deliberate-differences) for
 networking, mount, and runtime scope.
+
+## Shared Claude client relocation — 9 October 2026
+
+After moving the Claude shell-prefix implementation and its configuration tests to `remote-sandbox/claude-shell-prefix`, the ordinary backend suite passed 241 tests, skipped five optional external-client checks, and deselected 22 integration tests. Supplying the central streaming client through `REMOTE_SANDBOX_CLIENT` passed all nine targeted API/client and real Apple Container compatibility checks. The three direct WebSocket lifecycle tests remain independent of the external client.
+
+```sh
+uv run pytest -q -m 'not integration'
+RUN_APPLE_CONTAINER_TESTS=1 \
+REMOTE_SANDBOX_CLIENT=/absolute/path/to/remote-sandbox/claude-shell-prefix/remote_sandbox_exec.py \
+  uv run pytest -q tests/test_legacy_client.py tests/test_real_clients.py
+```
+
+Ruff, whitespace checks, and `uv build` passed. The rebuilt wheel was installed in an isolated uv environment, where CLI help described only the image recipe and proxy policy and `--write-setup` exported exactly `Containerfile` and `proxy.json`. Archive inspection confirmed that neither the wheel nor the source distribution contains shell-prefix wrapper/client copies or the relocated settings tests. Earlier counts and bundled-client references above describe their historical revisions.

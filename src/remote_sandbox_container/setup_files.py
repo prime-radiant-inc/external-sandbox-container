@@ -3,7 +3,7 @@ from importlib.resources import files
 from pathlib import Path
 
 
-SETUP_FILES = ("Containerfile", "proxy.json", "claude-shell-prefix.sh", "remote_sandbox_exec.py")
+SETUP_FILES = ("Containerfile", "proxy.json")
 
 
 def write_setup(directory: str | Path) -> Path:
@@ -13,7 +13,7 @@ def write_setup(directory: str | Path) -> Path:
     resources = files("remote_sandbox_container").joinpath("resources")
     contents = {name: resources.joinpath(name).read_bytes() for name in SETUP_FILES}
     # Preflight every existing file before creating anything. Never replace a
-    # user's edited policy, image recipe, or helper with a bundled default.
+    # user's edited policy or image recipe with a bundled default.
     for name, data in contents.items():
         path = target / name
         if path.is_symlink() or (path.exists() and (not path.is_file() or path.read_bytes() != data)):
@@ -24,6 +24,4 @@ def write_setup(directory: str | Path) -> Path:
         if not path.exists():
             with path.open("xb") as output:
                 output.write(data)
-        if name == "claude-shell-prefix.sh":
-            path.chmod(0o755)
     return target.resolve()

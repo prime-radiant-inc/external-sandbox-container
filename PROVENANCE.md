@@ -38,3 +38,7 @@ Apple Container. Python dependencies are recorded in `uv.lock`.
 ## Rename — 9 October 2026
 
 The project is now `remote-sandbox-container`, its Python module is `remote_sandbox_container`, and the streaming helper is `clients/remote_sandbox_exec.py`. The client now prefers `REMOTE_SANDBOX_*` environment settings while retaining `V86_*` as fallback aliases. The historical names, paths, and source hashes above describe the original import and have been preserved. The shared UI is now `remote-sandbox-ui`; protocol strings and default ports are unchanged.
+
+## Shared client relocation — 9 October 2026
+
+The Claude shell-prefix wrapper, Python streaming client, and their configuration tests are now maintained in [remote-sandbox/claude-shell-prefix](https://github.com/prime-radiant-inc/remote-sandbox/tree/main/claude-shell-prefix). Their implementation copies were removed from this repository and from Python package resources. The source hashes and earlier paths above remain historical records. `--write-setup` now exports only `Containerfile` and `proxy.json`; optional backend compatibility tests use an explicitly selected external client.

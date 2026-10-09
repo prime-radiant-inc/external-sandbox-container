@@ -14,43 +14,7 @@ network connection, so install required tools into the image before the demo.
 
 ## Claude Code
 
-The included wrapper and Python client use the existing `/exec/ws` protocol. The canonical settings are `REMOTE_SANDBOX_API_URL`, `REMOTE_SANDBOX_CWD`, `REMOTE_SANDBOX_TIMEOUT_MS`, `REMOTE_SANDBOX_MAX_OUTPUT_BYTES`, and `REMOTE_SANDBOX_FORWARD_STDIN`. The matching `V86_*` names remain fallback aliases, with the new setting taking precedence when both are present. The shell-prefix wrapper defaults to this server on port `8687`; set `REMOTE_SANDBOX_API_URL` to override it. The Python client defaults to v86 on port `8686`, so direct client commands set the URL explicitly. Run the client once to prepare its `uv` dependency before starting Claude:
-
-```sh
-APP=/absolute/path/to/remote-sandbox-container
-REMOTE_SANDBOX_API_URL=http://127.0.0.1:8687 REMOTE_SANDBOX_CWD=/mnt/project uv run --quiet --script "$APP/clients/remote_sandbox_exec.py" \
-  --no-stdin 'uname -s; pwd'
-```
-
-From the mounted project directory:
-
-```sh
-mkdir -p .sandbox-claude-tmp
-CLAUDE_CODE_SHELL=/bin/bash \
-CLAUDE_CODE_TMPDIR="$PWD/.sandbox-claude-tmp" \
-CLAUDE_CODE_SHELL_PREFIX="$APP/clients/claude-shell-prefix.sh" \
-REMOTE_SANDBOX_API_URL=http://127.0.0.1:8687 \
-claude
-```
-
-The temporary directory must be within the mount because Claude's command
-wrapper writes a cwd bookkeeping file there. Add `.sandbox-claude-tmp/` to the
-project's ignore file if desired. The default image includes Python and Bash;
-it is not intended to contain every language toolchain.
-
-The shell prefix redirects shell commands, including wrapper bookkeeping,
-through the container. Claude's native Read/Edit tools still access the host.
-A read-only mount constrains container operations; it does not impose a new
-permission policy on Claude's host file tools. No live Claude model call is
-needed to test the wrapper:
-
-```sh
-"$APP/clients/claude-shell-prefix.sh" 'uname -s; pwd; printf "container stdout\n"'
-"$APP/clients/claude-shell-prefix.sh" 'printf "container stderr\n" >&2; exit 7'
-```
-
-The shell-prefix integration originates from the v86 prototype and Anthropic's
-[`CLAUDE_CODE_SHELL_PREFIX` setting](https://code.claude.com/docs/en/env-vars).
+The shared [Claude shell-prefix integration](https://github.com/prime-radiant-inc/remote-sandbox/tree/main/claude-shell-prefix) is maintained in the `remote-sandbox` repository. Follow its setup instructions using `REMOTE_SANDBOX_API_URL=http://127.0.0.1:8687` for this backend. Start the container with the project mounted and `--preserve-paths` as above; Claude's temporary bookkeeping directory must be inside a writable mount. The backend package no longer bundles the shell wrapper or Python client.
 
 ## Codex CLI
 

@@ -31,5 +31,5 @@ markers = ["integration: requires a real Apple Container or running server"]
 select = ["E4", "E7", "E9", "F"]
 
 [tool.uv.build-backend]
-source-include = ["clients/**", "docs/**", "examples/**", "tests/**", "uv.lock", ".python-version", "PROVENANCE.md"]
+source-include = ["docs/**", "examples/**", "tests/**", "uv.lock", ".python-version", "PROVENANCE.md"]
 wheel-exclude = ["src/remote_sandbox_container/ui/test/**"]

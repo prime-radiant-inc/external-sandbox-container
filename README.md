@@ -12,7 +12,7 @@ shell, file, and search tools plus `!`/`!!` commands through `/exec/ws`.
 
 ## Renamed project
 
-This project was previously `sandbox-exec-server` with Python module `sandbox_exec_server`. The distribution, command, and module are now `remote-sandbox-container`, `remote-sandbox-container`, and `remote_sandbox_container`. Run `uv sync --locked --reinstall` after moving or updating an existing checkout, update command/import paths, and use `remote_sandbox_exec.py` in new setup exports. Ports and wire protocol identifiers are unchanged. Historical provenance and verification records retain the names used when those results were recorded.
+This project was previously `sandbox-exec-server` with Python module `sandbox_exec_server`. The distribution, command, and module are now `remote-sandbox-container`, `remote-sandbox-container`, and `remote_sandbox_container`. Run `uv sync --locked --reinstall` after moving or updating an existing checkout, update command/import paths, and obtain Claude shell-prefix helpers from the shared `remote-sandbox` repository. Ports and wire protocol identifiers are unchanged. Historical provenance and verification records retain the names used when those results were recorded.
 
 ## Start
 
@@ -58,12 +58,10 @@ The command creates the directory if needed, writes the files below, and exits w
 | --- | --- |
 | `Containerfile` | Image recipe with Python, Bash, Node.js/npm, uv/uvx, Git, curl, ripgrep, jq, and other development tools. |
 | `proxy.json` | Starter policy allowing only GET/HEAD requests to `https://example.com`; edit it for your required destinations. |
-| `claude-shell-prefix.sh` | Executable Claude Code shell wrapper that uses the adjacent streaming client and defaults to port 8687. |
-| `remote_sandbox_exec.py` | Python streaming client used by the wrapper; requires `uv` on the host. |
 
-Rerunning the command accepts files whose contents are unchanged. It refuses to overwrite edited files, directories in place of files, or symlinks at the destination or output filenames; use a new destination if you have customized the setup. Conflicts are checked before any files are written. The shell wrapper is made executable.
+Rerunning the command accepts files whose contents are unchanged. It refuses to overwrite edited files, directories in place of files, or symlinks at the destination or output filenames; use a new destination if you have customized the setup. Conflicts are checked before any files are written.
 
-See [image build instructions](docs/demo.md#optional-tool-image) and [agent setup](docs/agents.md) for the next steps, using the exported file paths in place of the repository examples and clients.
+See [image build instructions](docs/demo.md#optional-tool-image) for the exported image recipe and [agent setup](docs/agents.md) for connecting coding agents. Claude shell-prefix helpers live in the shared [remote-sandbox integration](https://github.com/prime-radiant-inc/remote-sandbox/tree/main/claude-shell-prefix); `--write-setup` exports only the image recipe and proxy policy.
 
 ## Browser terminal
 
@@ -94,12 +92,7 @@ curl -sS http://127.0.0.1:8687/exec \
 HTTP request with a nonzero `exitCode`. `GET /mounts` returns mount mappings for
 the existing client's working-directory translation.
 
-The Python streaming client is `clients/remote_sandbox_exec.py`. It uses `REMOTE_SANDBOX_*` settings and accepts the corresponding historical `V86_*` variables as fallback aliases; the new name takes precedence when both are set. It works with either backend.
-
-```sh
-REMOTE_SANDBOX_API_URL=http://127.0.0.1:8687 REMOTE_SANDBOX_CWD=/mnt/project uv run --quiet --script clients/remote_sandbox_exec.py \
-  --no-stdin 'uname -s; pwd'
-```
+The [shared streaming client and Claude shell-prefix setup](https://github.com/prime-radiant-inc/remote-sandbox/tree/main/claude-shell-prefix) work with this backend. Set `REMOTE_SANDBOX_API_URL=http://127.0.0.1:8687` and use the mounted project path as described in [agent setup](docs/agents.md).
 
 See [agent setup](docs/agents.md), [protocol compatibility](docs/protocol.md),
 and [a repeatable team demo](docs/demo.md).
@@ -175,10 +168,18 @@ uv run pytest -m 'not integration'
 node --test tests/test_terminal_js.mjs
 ```
 
-Tests marked `integration` use the real container runtime or installed agent
-CLI. See [verification instructions](docs/demo.md#verification). The Codex CLI
-fixture uses deterministic loopback model responses and an isolated temporary
-configuration; it does not call a paid model or change user configuration.
+Client compatibility checks are optional because the client is maintained separately. Set `REMOTE_SANDBOX_CLIENT` to its absolute path to enable those checks:
+
+```sh
+REMOTE_SANDBOX_CLIENT=/absolute/path/to/remote-sandbox/claude-shell-prefix/remote_sandbox_exec.py \
+  uv run pytest -q tests/test_legacy_client.py
+
+RUN_APPLE_CONTAINER_TESTS=1 \
+REMOTE_SANDBOX_CLIENT=/absolute/path/to/remote-sandbox/claude-shell-prefix/remote_sandbox_exec.py \
+  uv run pytest -q tests/test_real_clients.py
+```
+
+Tests marked `integration` use the real container runtime or installed agent CLI. See [verification instructions](docs/demo.md#verification). The Codex CLI fixture uses deterministic loopback model responses and an isolated temporary configuration; it does not call a paid model or change user configuration.
 
 The Codex adapter targets the experimental protocol exercised with
 `codex-cli 0.154.0`. Other versions require compatibility testing.

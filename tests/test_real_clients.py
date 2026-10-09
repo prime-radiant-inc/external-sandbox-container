@@ -1,9 +1,8 @@
-"""Opt-in unchanged-client compatibility against a real Apple Container."""
+"""Opt-in external-client compatibility and protocol checks in Apple Container."""
 
 import asyncio
 import base64
 import os
-from pathlib import Path
 
 import aiohttp
 from aiohttp.test_utils import TestServer
@@ -16,7 +15,6 @@ from test_apple_integration import sandbox as sandbox  # shared module-scoped fi
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio(loop_scope="module"),
               pytest.mark.skipif(os.environ.get("RUN_APPLE_CONTAINER_TESTS") != "1",
                                  reason="Set RUN_APPLE_CONTAINER_TESTS=1")]
-CLIENT = Path(__file__).resolve().parents[1] / "clients" / "remote_sandbox_exec.py"
 
 
 async def idle(backend):
@@ -25,14 +23,14 @@ async def idle(backend):
             await asyncio.sleep(0.01)
 
 
-async def test_unchanged_uv_client_real_binary_io_and_exit(sandbox):
+async def test_shared_uv_client_real_binary_io_and_exit(external_streaming_client, sandbox):
     backend, rw, _ = sandbox
     async with TestServer(create_app(backend)) as server:
         env = {key: value for key, value in os.environ.items() if not key.startswith(("REMOTE_SANDBOX_", "V86_"))}
         env["REMOTE_SANDBOX_API_URL"] = str(server.make_url("/"))
         # /mounts maps this real host cwd into /mnt/project inside the container.
         command = "printf 'prefix\\000\\377'; cat; printf 'stderr\\000\\377\\n' >&2; exit 23"
-        client = await asyncio.create_subprocess_exec("uv", "run", "--quiet", "--script", str(CLIENT), command,
+        client = await asyncio.create_subprocess_exec("uv", "run", "--quiet", "--script", str(external_streaming_client), command,
             env=env, cwd=rw, stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
         payload = bytes(range(256)) * 1024  # 256 KiB: eight acknowledged stdin chunks.

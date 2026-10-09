@@ -1,9 +1,8 @@
-"""Run the streaming client with canonical settings and legacy aliases."""
+"""Check this API against an explicitly selected external streaming client."""
 
 import asyncio
 import base64
 import os
-from pathlib import Path
 import sys
 
 import pytest
@@ -13,12 +12,9 @@ from remote_sandbox_container.api import create_app
 from test_api import EXIT, FakeBackend
 
 
-CLIENT = Path(__file__).resolve().parents[1] / "clients" / "remote_sandbox_exec.py"
-
-
 @pytest.mark.parametrize("prefix", ["REMOTE_SANDBOX_", "V86_"])
 @pytest.mark.parametrize("forward_stdin", [True, False])
-async def test_client_binary_streams_and_exit_status(forward_stdin, prefix):
+async def test_client_binary_streams_and_exit_status(external_streaming_client, forward_stdin, prefix):
     backend = FakeBackend()
     backend.process.echo = True
     backend.process.finish_on_eof = True
@@ -33,7 +29,7 @@ async def test_client_binary_streams_and_exit_status(forward_stdin, prefix):
         env.update({prefix + "API_URL": str(server.make_url("/")), prefix + "CWD": "/workspace"})
         # Invoke the interpreter already managed by uv.
         command = "cat; printf 'this exact command is never evaluated on the host'"
-        args = [sys.executable, str(CLIENT), *([] if forward_stdin else ["--no-stdin"]), command]
+        args = [sys.executable, str(external_streaming_client), *([] if forward_stdin else ["--no-stdin"]), command]
         client = await asyncio.create_subprocess_exec(*args, env=env, stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
         payload = bytes(range(256)) * 512 if forward_stdin else b""
@@ -55,7 +51,7 @@ async def test_client_binary_streams_and_exit_status(forward_stdin, prefix):
             assert backend.process.inputs[-1] == "eof"
 
 
-async def test_legacy_client_maps_host_cwd_through_mounts(tmp_path):
+async def test_legacy_client_maps_host_cwd_through_mounts(external_streaming_client, tmp_path):
     backend = FakeBackend()
     backend.info = lambda: {"mounts": [{"hostPath": str(tmp_path), "guestPath": "/mnt/demo", "preservedPaths": []}]}
     child_dir = tmp_path / "nested"
@@ -64,7 +60,7 @@ async def test_legacy_client_maps_host_cwd_through_mounts(tmp_path):
     async with TestServer(create_app(backend)) as server:
         env = {key: value for key, value in os.environ.items() if not key.startswith(("REMOTE_SANDBOX_", "V86_"))}
         env["REMOTE_SANDBOX_API_URL"] = str(server.make_url("/"))
-        client = await asyncio.create_subprocess_exec(sys.executable, str(CLIENT), "--no-stdin", "pwd",
+        client = await asyncio.create_subprocess_exec(sys.executable, str(external_streaming_client), "--no-stdin", "pwd",
             env=env, cwd=child_dir, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
         async with asyncio.timeout(10):
             stdout, stderr = await client.communicate()

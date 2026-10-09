@@ -33,7 +33,7 @@ def parser():
                         metavar="[NAME=]PATH", help="Share a host directory; --mount is read-write")
     result.add_argument("--preserve-paths", action="store_true", help="Also mount host directories at their original absolute paths")
     result.add_argument("--proxy-config", metavar="PATH", help="Enable host-enforced HTTP(S) egress using this allow-list JSON file")
-    result.add_argument("--write-setup", metavar="DIR", help="Write the bundled image recipe, proxy policy, and Claude helpers, then exit")
+    result.add_argument("--write-setup", metavar="DIR", help="Write the bundled image recipe and proxy policy, then exit")
     return result
 
 
