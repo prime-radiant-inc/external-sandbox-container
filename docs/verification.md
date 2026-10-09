@@ -194,12 +194,12 @@ networking, mount, and runtime scope.
 
 ## Shared Claude client relocation — 9 October 2026
 
-After moving the Claude shell-prefix implementation and its configuration tests to `remote-sandbox/claude-shell-prefix`, the ordinary backend suite passed 241 tests, skipped five optional external-client checks, and deselected 22 integration tests. Supplying the central streaming client through `REMOTE_SANDBOX_CLIENT` passed all nine targeted API/client and real Apple Container compatibility checks. The three direct WebSocket lifecycle tests remain independent of the external client.
+After moving the Claude shell-prefix implementation and its configuration tests to `remote-sandbox/claude-code`, the ordinary backend suite passed 241 tests, skipped five optional external-client checks, and deselected 22 integration tests. Supplying the central streaming client through `REMOTE_SANDBOX_CLIENT` passed all nine targeted API/client and real Apple Container compatibility checks. The three direct WebSocket lifecycle tests remain independent of the external client.
 
 ```sh
 uv run pytest -q -m 'not integration'
 RUN_APPLE_CONTAINER_TESTS=1 \
-REMOTE_SANDBOX_CLIENT=/absolute/path/to/remote-sandbox/claude-shell-prefix/remote_sandbox_exec.py \
+REMOTE_SANDBOX_CLIENT=/absolute/path/to/remote-sandbox/claude-code/remote_sandbox_exec.py \
   uv run pytest -q tests/test_legacy_client.py tests/test_real_clients.py
 ```
 

@@ -61,7 +61,7 @@ The command creates the directory if needed, writes the files below, and exits w
 
 Rerunning the command accepts files whose contents are unchanged. It refuses to overwrite edited files, directories in place of files, or symlinks at the destination or output filenames; use a new destination if you have customized the setup. Conflicts are checked before any files are written.
 
-See [image build instructions](docs/demo.md#optional-tool-image) for the exported image recipe and [agent setup](docs/agents.md) for connecting coding agents. Claude shell-prefix helpers live in the shared [remote-sandbox integration](https://github.com/prime-radiant-inc/remote-sandbox/tree/main/claude-shell-prefix); `--write-setup` exports only the image recipe and proxy policy.
+See [image build instructions](docs/demo.md#optional-tool-image) for the exported image recipe and [agent setup](docs/agents.md) for connecting coding agents. Claude shell-prefix helpers live in the shared [remote-sandbox integration](https://github.com/prime-radiant-inc/remote-sandbox/tree/main/claude-code); `--write-setup` exports only the image recipe and proxy policy.
 
 ## Browser terminal
 
@@ -92,7 +92,7 @@ curl -sS http://127.0.0.1:8687/exec \
 HTTP request with a nonzero `exitCode`. `GET /mounts` returns mount mappings for
 the existing client's working-directory translation.
 
-The [shared streaming client and Claude shell-prefix setup](https://github.com/prime-radiant-inc/remote-sandbox/tree/main/claude-shell-prefix) work with this backend. Set `REMOTE_SANDBOX_API_URL=http://127.0.0.1:8687` and use the mounted project path as described in [agent setup](docs/agents.md).
+The [shared Claude Code integration](https://github.com/prime-radiant-inc/remote-sandbox/tree/main/claude-code) and [Codex setup instructions](https://github.com/prime-radiant-inc/remote-sandbox/tree/main/codex) are maintained in `remote-sandbox`. Use `REMOTE_SANDBOX_API_URL=http://127.0.0.1:8687` for Claude Code and `ws://127.0.0.1:8687/codex` for Codex, with the mounted project paths described in [agent setup](docs/agents.md).
 
 See [agent setup](docs/agents.md), [protocol compatibility](docs/protocol.md),
 and [a repeatable team demo](docs/demo.md).
@@ -171,11 +171,11 @@ node --test tests/test_terminal_js.mjs
 Client compatibility checks are optional because the client is maintained separately. Set `REMOTE_SANDBOX_CLIENT` to its absolute path to enable those checks:
 
 ```sh
-REMOTE_SANDBOX_CLIENT=/absolute/path/to/remote-sandbox/claude-shell-prefix/remote_sandbox_exec.py \
+REMOTE_SANDBOX_CLIENT=/absolute/path/to/remote-sandbox/claude-code/remote_sandbox_exec.py \
   uv run pytest -q tests/test_legacy_client.py
 
 RUN_APPLE_CONTAINER_TESTS=1 \
-REMOTE_SANDBOX_CLIENT=/absolute/path/to/remote-sandbox/claude-shell-prefix/remote_sandbox_exec.py \
+REMOTE_SANDBOX_CLIENT=/absolute/path/to/remote-sandbox/claude-code/remote_sandbox_exec.py \
   uv run pytest -q tests/test_real_clients.py
 ```
 
