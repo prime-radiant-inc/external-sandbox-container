@@ -33,6 +33,7 @@ def parser():
                         metavar="[NAME=]PATH", help="Share a host directory; --mount is read-write")
     result.add_argument("--preserve-paths", action="store_true", help="Also mount host directories at their original absolute paths")
     result.add_argument("--proxy-config", metavar="PATH", help="Enable host-enforced HTTP(S) egress using this allow-list JSON file")
+    result.add_argument("--write-setup", metavar="DIR", help="Write the bundled image recipe, proxy policy, and Claude helpers, then exit")
     return result
 
 
@@ -103,6 +104,11 @@ async def serve(args):
 def main():
     args = parser().parse_args()
     try:
+        if args.write_setup is not None:
+            from .setup_files import write_setup
+
+            print(f"Setup files ready in {write_setup(args.write_setup)}")
+            return
         asyncio.run(serve(args))
     except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
         print(f"sandbox-exec-server: {exc}", file=sys.stderr)

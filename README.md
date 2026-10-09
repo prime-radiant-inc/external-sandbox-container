@@ -44,6 +44,27 @@ working directory; without mounts, it is `/workspace`.
 Run `uv run sandbox-exec-server --help` for image, resource, and container CLI
 options. `--container-bin` selects a particular Apple `container` executable.
 
+## Export setup files
+
+Use `--write-setup DIR` to copy the bundled setup files into a directory, including when running from an installed package without a source checkout:
+
+```sh
+uv run sandbox-exec-server --write-setup ./sandbox-config
+```
+
+The command creates the directory if needed, writes the files below, and exits without starting a server or building a container image. Apple Container does not need to be running for this step.
+
+| File | Purpose |
+| --- | --- |
+| `Containerfile` | Image recipe with Python, Bash, Node.js/npm, uv/uvx, Git, curl, ripgrep, jq, and other development tools. |
+| `proxy.json` | Starter policy allowing only GET/HEAD requests to `https://example.com`; edit it for your required destinations. |
+| `claude-shell-prefix.sh` | Executable Claude Code shell wrapper that uses the adjacent streaming client and defaults to port 8687. |
+| `v86_exec.py` | Python streaming client used by the wrapper; requires `uv` on the host. |
+
+Rerunning the command accepts files whose contents are unchanged. It refuses to overwrite edited files, directories in place of files, or symlinks at the destination or output filenames; use a new destination if you have customized the setup. Conflicts are checked before any files are written. The shell wrapper is made executable.
+
+See [image build instructions](docs/demo.md#optional-tool-image) and [agent setup](docs/agents.md) for the next steps, using the exported file paths in place of the repository examples and clients.
+
 ## Browser terminal
 
 Open `http://127.0.0.1:8687/` to run commands through the existing WebSocket API.
