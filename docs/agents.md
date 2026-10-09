@@ -20,4 +20,4 @@ Follow the shared [Codex setup instructions](https://github.com/prime-radiant-in
 
 ## Pi
 
-Use the backend's [Pi extension](../pi-extension/README.md), which defaults to `http://127.0.0.1:8687`.
+Use the shared [Pi extension](https://github.com/prime-radiant-inc/remote-sandbox/tree/main/pi) with `--sandbox-url http://127.0.0.1:8687`. The extension is maintained in `remote-sandbox/pi` and supports both server implementations.

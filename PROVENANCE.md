@@ -42,3 +42,7 @@ The project is now `remote-sandbox-container`, its Python module is `remote_sand
 ## Shared client relocation — 9 October 2026
 
 The Claude shell-prefix wrapper, Python streaming client, and their configuration tests are now maintained in [remote-sandbox/claude-code](https://github.com/prime-radiant-inc/remote-sandbox/tree/main/claude-code). Their implementation copies were removed from this repository and from Python package resources. The source hashes and earlier paths above remain historical records. `--write-setup` now exports only `Containerfile` and `proxy.json`; optional backend compatibility tests use an explicitly selected external client.
+
+## Shared Pi extension relocation — 9 October 2026
+
+The Pi extension originally developed in this repository is now maintained in [remote-sandbox/pi](https://github.com/prime-radiant-inc/remote-sandbox/tree/main/pi), alongside the other shared agent integrations. Its source, tests, lockfile, and documentation were moved together, and the npm package is now `remote-sandbox-pi`. The server protocol and default connection ports are unchanged; earlier Pi verification results describe the implementation before this relocation.

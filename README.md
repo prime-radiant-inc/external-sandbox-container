@@ -7,8 +7,7 @@ and change the execution sandbox. Claude Code uses the existing shell-prefix
 client at `/exec/ws`. Codex uses its exec-server protocol at `/codex`, including
 filesystem operations and native `apply_patch`.
 
-Pi can use the separate [Pi extension](pi-extension/README.md), which routes its
-shell, file, and search tools plus `!`/`!!` commands through `/exec/ws`.
+Pi uses the shared [Pi extension](https://github.com/prime-radiant-inc/remote-sandbox/tree/main/pi), which routes its shell, file, and search tools plus `!`/`!!` commands through `/exec/ws`. Set `--sandbox-url http://127.0.0.1:8687` for this backend.
 
 ## Renamed project
 
