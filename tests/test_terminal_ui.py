@@ -4,6 +4,7 @@ import asyncio
 import base64
 import re
 from html.parser import HTMLParser
+from importlib.resources import files
 
 import pytest
 from aiohttp import WSServerHandshakeError, WSMsgType
@@ -43,6 +44,9 @@ async def test_homepage_and_bundled_javascript(terminal_server):
     token, html, page = await terminal_token(client)
     assert len(token) >= 32
     assert "/terminal.js" in html
+    assert "<title>Sandbox terminal</title>" in html
+    assert '<div class="eyebrow">Sandbox exec server</div>' in html
+    assert "__TITLE__" not in html and "__BRAND__" not in html
     assert page.content_type == "text/html"
     assert page.headers["Cache-Control"] == "no-store"
     assert "frame-ancestors 'none'" in page.headers["Content-Security-Policy"]
@@ -53,6 +57,7 @@ async def test_homepage_and_bundled_javascript(terminal_server):
     assert script.content_type in {"application/javascript", "text/javascript"}
     assert script.headers["Cache-Control"] == "no-store"
     assert token not in await script.text()
+    assert await script.read() == files("sandbox_exec_server").joinpath("ui", "assets", "terminal.js").read_bytes()
     assert "Access-Control-Allow-Origin" not in script.headers
     assert not backend.calls
 
@@ -151,7 +156,11 @@ async def test_browser_metadata_cannot_bypass_token_checks_by_omitting_origin(te
     assert not backend.calls
 
 
-async def test_homepage_escapes_untrusted_working_directory():
+@pytest.mark.parametrize("cwd", [
+    '/workspace" autofocus onfocus="alert(document.domain)',
+    '/workspace/__NONCE__/__TOKEN__/__TITLE__/__BRAND__/__CWD__/__NETWORK__/__PROXY_LINK__',
+])
+async def test_homepage_escapes_untrusted_working_directory(cwd):
     class Inputs(HTMLParser):
         def __init__(self):
             super().__init__()
@@ -162,7 +171,6 @@ async def test_homepage_escapes_untrusted_working_directory():
                 self.fields.append(dict(attrs))
 
     backend = FakeBackend()
-    cwd = '/workspace" autofocus onfocus="alert(document.domain)'
     backend.info = lambda: {"defaultCwd": cwd}
     async with TestClient(TestServer(create_app(backend))) as client:
         _, html, _ = await terminal_token(client)

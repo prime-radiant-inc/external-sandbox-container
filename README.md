@@ -78,6 +78,8 @@ use the working-directory field instead of expecting a previous `cd` to carry
 over. This uses pipes, not a PTY. For a Python REPL, run `python3 -u -i`.
 See [terminal controls and behavior](docs/terminal.md).
 
+The HTML, CSS, JavaScript, and frontend tests are a pinned bundle from the independent `exec-server-ui` project. Normal installs include all runtime assets. See [shared UI development](docs/ui.md) for the update command, integrity checks, and packaging details.
+
 ## Try the existing API
 
 ```sh

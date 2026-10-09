@@ -32,3 +32,4 @@ select = ["E4", "E7", "E9", "F"]
 
 [tool.uv.build-backend]
 source-include = ["clients/**", "docs/**", "examples/**", "tests/**", "uv.lock", ".python-version", "PROVENANCE.md"]
+wheel-exclude = ["src/sandbox_exec_server/ui/test/**"]
