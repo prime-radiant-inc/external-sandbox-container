@@ -34,3 +34,7 @@ The Codex protocol target is its experimental `rust-v0.154.0` exec-server
 protocol. This project does not bundle a Codex binary, an Apple Container
 binary, or a Linux image. The selected OCI image is obtained independently by
 Apple Container. Python dependencies are recorded in `uv.lock`.
+
+## Rename — 9 October 2026
+
+The project is now `remote-sandbox-container`, its Python module is `remote_sandbox_container`, and the streaming helper is `clients/remote_sandbox_exec.py`. The client now prefers `REMOTE_SANDBOX_*` environment settings while retaining `V86_*` as fallback aliases. The historical names, paths, and source hashes above describe the original import and have been preserved. The shared UI is now `remote-sandbox-ui`; protocol strings and default ports are unchanged.

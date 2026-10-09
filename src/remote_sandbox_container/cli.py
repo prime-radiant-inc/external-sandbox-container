@@ -111,7 +111,7 @@ def main():
             return
         asyncio.run(serve(args))
     except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
-        print(f"sandbox-exec-server: {exc}", file=sys.stderr)
+        print(f"remote-sandbox-container: {exc}", file=sys.stderr)
         raise SystemExit(1) from None
     except KeyboardInterrupt:
         pass

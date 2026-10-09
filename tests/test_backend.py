@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from sandbox_exec_server.backend import AppleContainerBackend, Process, parse_mounts
+from remote_sandbox_container.backend import AppleContainerBackend, Process, parse_mounts
 
 
 def test_mount_modes_and_aliases(tmp_path):

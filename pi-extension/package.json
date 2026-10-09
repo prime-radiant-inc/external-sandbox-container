@@ -1,7 +1,7 @@
 {
-  "name": "pi-sandbox-exec",
+  "name": "pi-remote-sandbox-container",
   "version": "0.1.0",
-  "description": "Run Pi coding tools and user shell commands through sandbox-exec-server",
+  "description": "Run Pi coding tools and user shell commands through remote-sandbox-container",
   "type": "module",
   "license": "MIT",
   "engines": { "node": ">=22.19.0" },

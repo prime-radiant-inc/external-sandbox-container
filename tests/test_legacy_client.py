@@ -1,4 +1,4 @@
-"""Execute the original, unchanged Python client against the replacement API."""
+"""Run the streaming client with canonical settings and legacy aliases."""
 
 import asyncio
 import base64
@@ -9,15 +9,16 @@ import sys
 import pytest
 from aiohttp.test_utils import TestServer
 
-from sandbox_exec_server.api import create_app
+from remote_sandbox_container.api import create_app
 from test_api import EXIT, FakeBackend
 
 
-CLIENT = Path(__file__).resolve().parents[1] / "clients" / "v86_exec.py"
+CLIENT = Path(__file__).resolve().parents[1] / "clients" / "remote_sandbox_exec.py"
 
 
+@pytest.mark.parametrize("prefix", ["REMOTE_SANDBOX_", "V86_"])
 @pytest.mark.parametrize("forward_stdin", [True, False])
-async def test_unchanged_legacy_client_binary_streams_and_exit_status(forward_stdin):
+async def test_client_binary_streams_and_exit_status(forward_stdin, prefix):
     backend = FakeBackend()
     backend.process.echo = True
     backend.process.finish_on_eof = True
@@ -28,8 +29,9 @@ async def test_unchanged_legacy_client_binary_streams_and_exit_status(forward_st
     if not forward_stdin:
         backend.process.events.put_nowait(EXIT.copy())
     async with TestServer(create_app(backend)) as server:
-        env = {**os.environ, "V86_API_URL": str(server.make_url("/")), "V86_CWD": "/workspace"}
-        # Invoke the already uv-managed interpreter; the script remains unchanged.
+        env = {key: value for key, value in os.environ.items() if not key.startswith(("REMOTE_SANDBOX_", "V86_"))}
+        env.update({prefix + "API_URL": str(server.make_url("/")), prefix + "CWD": "/workspace"})
+        # Invoke the interpreter already managed by uv.
         command = "cat; printf 'this exact command is never evaluated on the host'"
         args = [sys.executable, str(CLIENT), *([] if forward_stdin else ["--no-stdin"]), command]
         client = await asyncio.create_subprocess_exec(*args, env=env, stdin=asyncio.subprocess.PIPE,
@@ -60,8 +62,8 @@ async def test_legacy_client_maps_host_cwd_through_mounts(tmp_path):
     child_dir.mkdir()
     backend.process.events.put_nowait({**EXIT, "exitCode": 0})
     async with TestServer(create_app(backend)) as server:
-        env = {key: value for key, value in os.environ.items() if key != "V86_CWD"}
-        env["V86_API_URL"] = str(server.make_url("/"))
+        env = {key: value for key, value in os.environ.items() if not key.startswith(("REMOTE_SANDBOX_", "V86_"))}
+        env["REMOTE_SANDBOX_API_URL"] = str(server.make_url("/"))
         client = await asyncio.create_subprocess_exec(sys.executable, str(CLIENT), "--no-stdin", "pwd",
             env=env, cwd=child_dir, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
         async with asyncio.timeout(10):

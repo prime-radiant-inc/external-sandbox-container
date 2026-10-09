@@ -1,7 +1,7 @@
 # Pi sandbox execution extension
 
 Run Pi's `bash`, `read`, `write`, `edit`, `grep`, `find`, and `ls` tools through
-the existing sandbox-exec-server WebSocket API. Both `!command` and `!!command`
+the existing remote-sandbox-container WebSocket API. Both `!command` and `!!command`
 use the same remote execution route. Pi, its model connection, and its session
 files stay on the host.
 
@@ -13,7 +13,7 @@ default Python image does not include ripgrep.
 
 ## Try it
 
-Leave sandbox-exec-server running. From this directory:
+Leave remote-sandbox-container running. From this directory:
 
 ```sh
 npm ci --ignore-scripts
@@ -136,6 +136,6 @@ Integration tests use temporary guest files and the actual Pi 0.85.1 RPC CLI,
 exercise all seven tools and manual shell routing, and make no paid model calls.
 They do not change the server or proxy configuration.
 
-The wire protocol is shared with v86-shell-server, so `--sandbox-url` can point
+The wire protocol is shared with remote-sandbox-v86, so `--sandbox-url` can point
 at port 8686 instead. This release has only been integration-tested against the
 Apple Container backend; the v86 image also needs the stated guest utilities.

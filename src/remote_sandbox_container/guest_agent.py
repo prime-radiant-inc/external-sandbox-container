@@ -195,9 +195,9 @@ class Job:
 
 
 async def main():
-    if sys.platform != "linux" or os.environ.get("SANDBOX_EXEC_GUEST") != "1":
+    if sys.platform != "linux" or os.environ.get("REMOTE_SANDBOX_CONTAINER_GUEST") != "1":
         raise SystemExit("This agent must run inside the managed Linux container")
-    sys.path.insert(0, "/opt/sandbox-exec")
+    sys.path.insert(0, "/opt/remote-sandbox-container")
     os.makedirs("/workspace", exist_ok=True)
     os.makedirs("/home/agent", exist_ok=True)
     loop = asyncio.get_running_loop()

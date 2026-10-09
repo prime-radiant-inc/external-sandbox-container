@@ -3,7 +3,7 @@
 Start the server with the writable project first and `--preserve-paths`:
 
 ```sh
-uv run sandbox-exec-server --preserve-paths \
+uv run remote-sandbox-container --preserve-paths \
   --mount-rw project=/absolute/path/to/project \
   --mount-ro reference=/absolute/path/to/reference
 ```
@@ -14,16 +14,11 @@ network connection, so install required tools into the image before the demo.
 
 ## Claude Code
 
-The included wrapper and Python client use the existing `/exec/ws` protocol.
-The `V86_*` variable names remain unchanged to preserve client compatibility.
-The shell-prefix wrapper defaults to this server on port `8687`; set
-`V86_API_URL` to override it. The unchanged Python client still defaults to
-v86 on port `8686`, so direct client commands set the URL explicitly.
-Run the client once to prepare its `uv` dependency before starting Claude:
+The included wrapper and Python client use the existing `/exec/ws` protocol. The canonical settings are `REMOTE_SANDBOX_API_URL`, `REMOTE_SANDBOX_CWD`, `REMOTE_SANDBOX_TIMEOUT_MS`, `REMOTE_SANDBOX_MAX_OUTPUT_BYTES`, and `REMOTE_SANDBOX_FORWARD_STDIN`. The matching `V86_*` names remain fallback aliases, with the new setting taking precedence when both are present. The shell-prefix wrapper defaults to this server on port `8687`; set `REMOTE_SANDBOX_API_URL` to override it. The Python client defaults to v86 on port `8686`, so direct client commands set the URL explicitly. Run the client once to prepare its `uv` dependency before starting Claude:
 
 ```sh
-APP=/absolute/path/to/sandbox-exec-server
-V86_API_URL=http://127.0.0.1:8687 V86_CWD=/mnt/project uv run --quiet --script "$APP/clients/v86_exec.py" \
+APP=/absolute/path/to/remote-sandbox-container
+REMOTE_SANDBOX_API_URL=http://127.0.0.1:8687 REMOTE_SANDBOX_CWD=/mnt/project uv run --quiet --script "$APP/clients/remote_sandbox_exec.py" \
   --no-stdin 'uname -s; pwd'
 ```
 
@@ -34,7 +29,7 @@ mkdir -p .sandbox-claude-tmp
 CLAUDE_CODE_SHELL=/bin/bash \
 CLAUDE_CODE_TMPDIR="$PWD/.sandbox-claude-tmp" \
 CLAUDE_CODE_SHELL_PREFIX="$APP/clients/claude-shell-prefix.sh" \
-V86_API_URL=http://127.0.0.1:8687 \
+REMOTE_SANDBOX_API_URL=http://127.0.0.1:8687 \
 claude
 ```
 

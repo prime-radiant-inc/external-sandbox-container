@@ -3,8 +3,8 @@ import base64
 import errno
 import unittest
 
-from sandbox_exec_server.codex import CodexSession, MAX_MESSAGE, codex_handler
-from sandbox_exec_server.app_state import BACKEND, CODEX_CONNECTIONS
+from remote_sandbox_container.codex import CodexSession, MAX_MESSAGE, codex_handler
+from remote_sandbox_container.app_state import BACKEND, CODEX_CONNECTIONS
 
 
 START = {"processId": "chosen", "argv": ["/bin/bash", "-c", "echo hi"],

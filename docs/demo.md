@@ -3,7 +3,7 @@
 Use the same coding task and client protocol with each prototype. Both servers
 can run at the same time: v86 defaults to port `8686`, and this Apple Container
 server defaults to port `8687`. Select the backend by setting the shell client
-`V86_API_URL` to `http://127.0.0.1:8686` or `http://127.0.0.1:8687`, or by setting
+`REMOTE_SANDBOX_API_URL` to `http://127.0.0.1:8686` or `http://127.0.0.1:8687`, or by setting
 the Codex environment URL to the corresponding `ws://127.0.0.1:PORT/codex`
 endpoint. The demo project has a deliberate arithmetic bug and uses Python's
 standard library, so it works without package downloads.
@@ -16,7 +16,7 @@ From this application's root:
 DEMO_ROOT=$(mktemp -d /private/tmp/sandbox-demo.XXXXXX)
 cp -R examples/demo-project "$DEMO_ROOT/project"
 cp -R examples/reference "$DEMO_ROOT/reference"
-uv run sandbox-exec-server --port 8687 --preserve-paths \
+uv run remote-sandbox-container --port 8687 --preserve-paths \
   --mount-rw "project=$DEMO_ROOT/project" \
   --mount-ro "reference=$DEMO_ROOT/reference"
 ```
@@ -61,7 +61,7 @@ container build --tag sandbox-demo:latest --file examples/Containerfile .
 The build options follow Apple's
 [container command reference](https://github.com/apple/container/blob/main/docs/command-reference.md#container-build).
 
-Then pass `--image sandbox-demo:latest` to `uv run sandbox-exec-server` alongside
+Then pass `--image sandbox-demo:latest` to `uv run remote-sandbox-container` alongside
 the same mount options. Image building and package downloads happen before the
 execution sandbox starts; commands still run with `--network none`. Having curl
 installed does not give the offline container network access. To grant selected

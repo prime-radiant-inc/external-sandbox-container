@@ -9,14 +9,14 @@ import aiohttp
 from aiohttp.test_utils import TestServer
 import pytest
 
-from sandbox_exec_server.api import create_app
+from remote_sandbox_container.api import create_app
 from test_apple_integration import sandbox as sandbox  # shared module-scoped fixture
 
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio(loop_scope="module"),
               pytest.mark.skipif(os.environ.get("RUN_APPLE_CONTAINER_TESTS") != "1",
                                  reason="Set RUN_APPLE_CONTAINER_TESTS=1")]
-CLIENT = Path(__file__).resolve().parents[1] / "clients" / "v86_exec.py"
+CLIENT = Path(__file__).resolve().parents[1] / "clients" / "remote_sandbox_exec.py"
 
 
 async def idle(backend):
@@ -28,8 +28,8 @@ async def idle(backend):
 async def test_unchanged_uv_client_real_binary_io_and_exit(sandbox):
     backend, rw, _ = sandbox
     async with TestServer(create_app(backend)) as server:
-        env = {key: value for key, value in os.environ.items() if key != "V86_CWD"}
-        env["V86_API_URL"] = str(server.make_url("/"))
+        env = {key: value for key, value in os.environ.items() if not key.startswith(("REMOTE_SANDBOX_", "V86_"))}
+        env["REMOTE_SANDBOX_API_URL"] = str(server.make_url("/"))
         # /mounts maps this real host cwd into /mnt/project inside the container.
         command = "printf 'prefix\\000\\377'; cat; printf 'stderr\\000\\377\\n' >&2; exit 23"
         client = await asyncio.create_subprocess_exec("uv", "run", "--quiet", "--script", str(CLIENT), command,

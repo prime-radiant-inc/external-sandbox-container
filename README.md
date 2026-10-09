@@ -1,10 +1,6 @@
-# sandbox-exec-server
+# remote-sandbox-container
 
-A Python execution server for coding agents, managed with `uv`. It implements
-the HTTP and WebSocket interfaces of the separate `v86-shell-server` prototype,
-but executes commands in a Linux container managed by Apple's `container` CLI.
-The application name leaves room for future backends, including Docker; this
-version implements Apple Container only.
+A Python execution server for coding agents, managed with `uv`. It implements the shared [remote sandbox protocol](../remote-sandbox/SPEC.md), alongside [remote-sandbox-v86](../remote-sandbox-v86), and executes commands in a Linux container managed by Apple's `container` CLI. This version implements Apple Container only.
 
 The experiment: keep the coding-agent integration and client protocol constant,
 and change the execution sandbox. Claude Code uses the existing shell-prefix
@@ -13,6 +9,10 @@ filesystem operations and native `apply_patch`.
 
 Pi can use the separate [Pi extension](pi-extension/README.md), which routes its
 shell, file, and search tools plus `!`/`!!` commands through `/exec/ws`.
+
+## Renamed project
+
+This project was previously `sandbox-exec-server` with Python module `sandbox_exec_server`. The distribution, command, and module are now `remote-sandbox-container`, `remote-sandbox-container`, and `remote_sandbox_container`. Run `uv sync --locked --reinstall` after moving or updating an existing checkout, update command/import paths, and use `remote_sandbox_exec.py` in new setup exports. Ports and wire protocol identifiers are unchanged. Historical provenance and verification records retain the names used when those results were recorded.
 
 ## Start
 
@@ -25,7 +25,7 @@ Requirements: an Apple silicon Mac with Apple's
 container system start
 container image pull python:3.13-slim
 uv sync
-uv run sandbox-exec-server --port 8687 --preserve-paths \
+uv run remote-sandbox-container --port 8687 --preserve-paths \
   --mount-rw project=/absolute/path/to/project \
   --mount-ro reference=/absolute/path/to/reference
 ```
@@ -41,7 +41,7 @@ The mounts appear at `/mnt/project` and `/mnt/reference` in Linux.
 container, for clients that send absolute paths. The first mount is the default
 working directory; without mounts, it is `/workspace`.
 
-Run `uv run sandbox-exec-server --help` for image, resource, and container CLI
+Run `uv run remote-sandbox-container --help` for image, resource, and container CLI
 options. `--container-bin` selects a particular Apple `container` executable.
 
 ## Export setup files
@@ -49,7 +49,7 @@ options. `--container-bin` selects a particular Apple `container` executable.
 Use `--write-setup DIR` to copy the bundled setup files into a directory, including when running from an installed package without a source checkout:
 
 ```sh
-uv run sandbox-exec-server --write-setup ./sandbox-config
+uv run remote-sandbox-container --write-setup ./sandbox-config
 ```
 
 The command creates the directory if needed, writes the files below, and exits without starting a server or building a container image. Apple Container does not need to be running for this step.
@@ -59,7 +59,7 @@ The command creates the directory if needed, writes the files below, and exits w
 | `Containerfile` | Image recipe with Python, Bash, Node.js/npm, uv/uvx, Git, curl, ripgrep, jq, and other development tools. |
 | `proxy.json` | Starter policy allowing only GET/HEAD requests to `https://example.com`; edit it for your required destinations. |
 | `claude-shell-prefix.sh` | Executable Claude Code shell wrapper that uses the adjacent streaming client and defaults to port 8687. |
-| `v86_exec.py` | Python streaming client used by the wrapper; requires `uv` on the host. |
+| `remote_sandbox_exec.py` | Python streaming client used by the wrapper; requires `uv` on the host. |
 
 Rerunning the command accepts files whose contents are unchanged. It refuses to overwrite edited files, directories in place of files, or symlinks at the destination or output filenames; use a new destination if you have customized the setup. Conflicts are checked before any files are written. The shell wrapper is made executable.
 
@@ -78,7 +78,7 @@ use the working-directory field instead of expecting a previous `cd` to carry
 over. This uses pipes, not a PTY. For a Python REPL, run `python3 -u -i`.
 See [terminal controls and behavior](docs/terminal.md).
 
-The HTML, CSS, JavaScript, and frontend tests are a pinned bundle from the independent `exec-server-ui` project. Normal installs include all runtime assets. See [shared UI development](docs/ui.md) for the update command, integrity checks, and packaging details.
+The HTML, CSS, JavaScript, and frontend tests are a pinned bundle from the independent `remote-sandbox-ui` project. Normal installs include all runtime assets. See [shared UI development](docs/ui.md) for the update command, integrity checks, and packaging details.
 
 ## Try the existing API
 
@@ -94,12 +94,10 @@ curl -sS http://127.0.0.1:8687/exec \
 HTTP request with a nonzero `exitCode`. `GET /mounts` returns mount mappings for
 the existing client's working-directory translation.
 
-The original Python streaming client is retained as
-`clients/v86_exec.py`. Its historical filename and `V86_*` environment
-variables are intentional compatibility details; it works with this backend.
+The Python streaming client is `clients/remote_sandbox_exec.py`. It uses `REMOTE_SANDBOX_*` settings and accepts the corresponding historical `V86_*` variables as fallback aliases; the new name takes precedence when both are set. It works with either backend.
 
 ```sh
-V86_API_URL=http://127.0.0.1:8687 V86_CWD=/mnt/project uv run --quiet --script clients/v86_exec.py \
+REMOTE_SANDBOX_API_URL=http://127.0.0.1:8687 REMOTE_SANDBOX_CWD=/mnt/project uv run --quiet --script clients/remote_sandbox_exec.py \
   --no-stdin 'uname -s; pwd'
 ```
 
@@ -111,7 +109,7 @@ and [a repeatable team demo](docs/demo.md).
 The container remains offline unless you opt into a host-enforced HTTP(S) proxy:
 
 ```sh
-uv run sandbox-exec-server --proxy-config examples/proxy-public.json
+uv run remote-sandbox-container --proxy-config examples/proxy-public.json
 ```
 
 This example permits GET/HEAD requests to `https://example.com` only. Open

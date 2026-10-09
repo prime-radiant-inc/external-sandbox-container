@@ -3,7 +3,7 @@ import asyncio
 
 import pytest
 
-from sandbox_exec_server import cli
+from remote_sandbox_container import cli
 
 
 def test_proxy_is_explicit_and_default_port_is_unchanged():

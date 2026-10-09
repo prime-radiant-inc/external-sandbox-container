@@ -3,14 +3,14 @@ from importlib.resources import files
 from pathlib import Path
 
 
-SETUP_FILES = ("Containerfile", "proxy.json", "claude-shell-prefix.sh", "v86_exec.py")
+SETUP_FILES = ("Containerfile", "proxy.json", "claude-shell-prefix.sh", "remote_sandbox_exec.py")
 
 
 def write_setup(directory: str | Path) -> Path:
     target = Path(directory).expanduser()
     if target.is_symlink() or (target.exists() and not target.is_dir()):
         raise ValueError(f"Setup destination must be a directory, not a symlink or file: {target}")
-    resources = files("sandbox_exec_server").joinpath("resources")
+    resources = files("remote_sandbox_container").joinpath("resources")
     contents = {name: resources.joinpath(name).read_bytes() for name in SETUP_FILES}
     # Preflight every existing file before creating anything. Never replace a
     # user's edited policy, image recipe, or helper with a bundled default.

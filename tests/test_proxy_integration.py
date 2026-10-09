@@ -18,8 +18,8 @@ from cryptography.x509.oid import NameOID
 import pytest
 import pytest_asyncio
 
-from sandbox_exec_server.backend import AppleContainerBackend
-from sandbox_exec_server.proxy import HostProxy, ProxyPolicy
+from remote_sandbox_container.backend import AppleContainerBackend
+from remote_sandbox_container.proxy import HostProxy, ProxyPolicy
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio(loop_scope="module"),
               pytest.mark.skipif(os.environ.get("RUN_APPLE_CONTAINER_TESTS") != "1",

@@ -5,19 +5,21 @@ from importlib.resources import files
 
 import pytest
 
-from sandbox_exec_server import cli
-from sandbox_exec_server.setup_files import SETUP_FILES, write_setup
+from remote_sandbox_container import cli
+from remote_sandbox_container.setup_files import SETUP_FILES, write_setup
 
 
 def test_cli_exports_bundled_files_without_starting_server(tmp_path, monkeypatch, capsys):
     target = tmp_path / "nested" / "setup"
-    monkeypatch.setattr(sys, "argv", ["sandbox-exec-server", "--write-setup", str(target)])
+    monkeypatch.setattr(sys, "argv", ["remote-sandbox-container", "--write-setup", str(target)])
     monkeypatch.setattr(cli, "serve", lambda args: pytest.fail("Must not start the server"))
     cli.main()
     assert str(target.resolve()) in capsys.readouterr().out
     assert {p.name for p in target.iterdir()} == set(SETUP_FILES)
     for name in SETUP_FILES:
-        assert (target / name).read_bytes() == files("sandbox_exec_server").joinpath("resources", name).read_bytes()
+        assert (target / name).read_bytes() == files("remote_sandbox_container").joinpath("resources", name).read_bytes()
+    assert "remote_sandbox_exec.py" in SETUP_FILES
+    assert "remote_sandbox_exec.py" in (target / "claude-shell-prefix.sh").read_text()
     assert os.access(target / "claude-shell-prefix.sh", os.X_OK)
     mtimes = {p.name: p.stat().st_mtime_ns for p in target.iterdir()}
     assert write_setup(target) == target.resolve()
@@ -28,7 +30,7 @@ def test_cli_exports_bundled_files_without_starting_server(tmp_path, monkeypatch
 def test_output_conflicts_fail_before_writing_any_files(tmp_path, kind):
     target = tmp_path / "setup"
     target.mkdir()
-    conflict = target / "v86_exec.py"
+    conflict = target / "remote_sandbox_exec.py"
     original = tmp_path / "original"
     original.write_text("keep me")
     if kind == "edited":

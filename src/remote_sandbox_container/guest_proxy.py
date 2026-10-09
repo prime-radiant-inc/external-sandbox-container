@@ -18,7 +18,7 @@ class GuestProxy:
         self.listener = None
         self.environment = {}
 
-    async def start(self, ca_pem, directory="/run/sandbox-exec-proxy"):
+    async def start(self, ca_pem, directory="/run/remote-sandbox-proxy"):
         # Only public CA material reaches the guest. Preserve public system roots
         # for applications that also communicate with guest-local HTTPS services.
         if not isinstance(ca_pem, str) or len(ca_pem) > 65536 or "-----BEGIN CERTIFICATE-----" not in ca_pem:

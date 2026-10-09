@@ -4,7 +4,7 @@ import socket
 
 import pytest
 
-from sandbox_exec_server.proxy_policy import PolicyConfigError, PolicyError, ProxyPolicy, load_policy
+from remote_sandbox_container.proxy_policy import PolicyConfigError, PolicyError, ProxyPolicy, load_policy
 
 
 def config(**overrides):
