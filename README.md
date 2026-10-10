@@ -1,6 +1,6 @@
 # remote-sandbox-container
 
-A Python execution server for coding agents, managed with `uv`. It implements the shared [remote sandbox protocol](https://github.com/prime-radiant-inc/remote-sandbox/blob/main/SPEC.md), alongside [remote-sandbox-v86](https://github.com/prime-radiant-inc/remote-sandbox-v86), and executes commands in a Linux container managed by Apple's `container` CLI. This version implements Apple Container only.
+A Python execution server for coding agents, managed with `uv`. It implements the shared [remote sandbox protocol](https://github.com/prime-radiant-inc/remote-sandbox/blob/main/SPEC.md), alongside [remote-sandbox-v86](https://github.com/prime-radiant-inc/remote-sandbox-v86) and [remote-sandbox-quicksand](https://github.com/prime-radiant-inc/remote-sandbox-quicksand), and executes commands in a Linux container managed by Apple's `container` CLI. This version implements Apple Container only.
 
 The experiment: keep the coding-agent integration and client protocol constant,
 and change the execution sandbox. Claude Code uses the existing shell-prefix
@@ -30,7 +30,8 @@ uv run remote-sandbox-container --port 8687 --preserve-paths \
 ```
 
 The server defaults to `127.0.0.1:8687`, so it can run alongside the v86 server
-on port `8686`. It creates its own container with two CPUs,
+on port `8686` and the Quicksand server on port `8688`. It creates its own
+container with two CPUs,
 512 MiB of memory, and `--network none`. Stop the server with Ctrl-C to remove
 that container. Files in writable mounts persist on the host; other container
 changes are disposable. Host changes to mounted files remain visible.

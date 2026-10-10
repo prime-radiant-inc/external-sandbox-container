@@ -1,9 +1,10 @@
 # Team demo
 
-Use the same coding task and client protocol with each prototype. Both servers
-can run at the same time: v86 defaults to port `8686`, and this Apple Container
-server defaults to port `8687`. Select the backend by setting the shell client
-`REMOTE_SANDBOX_API_URL` to `http://127.0.0.1:8686` or `http://127.0.0.1:8687`, or by setting
+Use the same coding task and client protocol with each prototype. All three
+servers can run at the same time: v86 defaults to port `8686`, this Apple
+Container server to port `8687`, and Quicksand to port `8688`. Select the backend
+by setting the shell client `REMOTE_SANDBOX_API_URL` to `http://127.0.0.1:8686`,
+`http://127.0.0.1:8687` or `http://127.0.0.1:8688`, or by setting
 the Codex environment URL to the corresponding `ws://127.0.0.1:PORT/codex`
 endpoint. The demo project has a deliberate arithmetic bug and uses Python's
 standard library, so it works without package downloads.
