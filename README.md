@@ -115,10 +115,7 @@ certificate. A small guest listener relays traffic over the existing command
 pipe to the proxy in the host Python process. The container still uses
 `--network none`; removing proxy settings cannot enable direct network access.
 
-[examples/proxy.json](examples/proxy.json) also demonstrates substituting a
-placeholder with an API key from the host environment. It requires
-`OPENAI_API_KEY` on the host before startup. Real keys are not passed to the
-container or displayed by the management UI.
+[examples/proxy.json](examples/proxy.json) also demonstrates substituting a placeholder with an API key from the host environment. It requires `OPENAI_API_KEY` on the host before startup. Real keys are not provisioned to the container or displayed by the management UI. An allowed upstream can transform and echo a credential despite literal response redaction; use credential rules only with trusted services and narrow their methods and paths. See [proxy scope](docs/proxy.md#boundary-and-scope).
 
 ## Scope
 
@@ -127,10 +124,7 @@ container or displayed by the management UI.
   evaluate submitted command text in a host shell.
 - The default image runs as UID 0 inside the guest, with all Linux capabilities
   dropped. The environment's `USER=agent` label does not change the kernel UID.
-- Mounts deliberately expose selected host directories. Read-write mounts allow
-  immediate host changes; read-only mounts use the runtime's read-only setting.
-  Do not expose a writable hardlink alias of a file in a read-only mount. This
-  backend does not reproduce v86's per-inode hardlink restrictions.
+- Mounts deliberately expose selected host directories. Read-write mounts allow immediate host changes; read-only mounts use the runtime's read-only setting. A pre-existing host hardlink in a writable mount remains editable even if another name for the same file is in a read-only mount; avoid that alias if the file must stay unchanged. This backend does not reproduce v86's per-inode hardlink restrictions.
 - Container networking is disabled. Optional HTTP(S) egress travels over the
   command pipe to the host proxy, which enforces the allow-list and substitutes
   credentials. Image acquisition occurs on the host.
