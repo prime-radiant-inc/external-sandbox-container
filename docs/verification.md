@@ -66,7 +66,7 @@ browser click check was unavailable because the host Mac was locked.
 
 - Host: Apple silicon, macOS 26.4; Python 3.14.3; uv 0.12.9.
 - Apple Container CLI/server: 1.4.1, commit `9a8917ca2da5cd6ba059b9ba5ca5a74892e9bb7d`.
-- Codex CLI: 0.154.0.
+- Codex CLI: 0.164.0.
 - Default guest: Linux aarch64, `python:3.13-slim`, Python 3.13.15.
 - Image index digest: `sha256:9d2e5553305c7c7b0097999bb17187c69b921ccd6bc9d40e4bb5ebe652c00285`.
 - arm64 image manifest: `sha256:c89921a0c7b42f27338ed8c279fb370e69e941c92460f91895d08304e844b0b4`.

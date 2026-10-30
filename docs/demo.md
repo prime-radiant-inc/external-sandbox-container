@@ -107,7 +107,7 @@ Run the server tests:
 uv run pytest -m 'not integration'
 ```
 
-The real Codex CLI fixtures require Codex **0.154.0** and a running server with
+The real Codex CLI fixtures require Codex **0.164.0** and a running server with
 `project` and `reference` mounts. The fixture creates uniquely named test files
 within those mounts and removes them afterward. In another terminal, set the
 paths to the same copied directories used above:

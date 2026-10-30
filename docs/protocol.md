@@ -92,7 +92,7 @@ container, including paths in its disposable filesystem; they are not host
 filesystem paths interpreted by the Python server. Read-only mounts constrain
 both commands and filesystem RPCs.
 
-The experimental protocol target is Codex CLI 0.154.0. Unsupported requests
+The experimental protocol target is Codex CLI 0.164.0. Unsupported requests
 fail explicitly. In particular, this server does not add PTYs, Codex's local
 platform sandboxes, remote extension execution, or the App Server's
 `thread/shellCommand` method.

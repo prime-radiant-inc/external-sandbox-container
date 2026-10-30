@@ -176,4 +176,4 @@ REMOTE_SANDBOX_CLIENT=/absolute/path/to/remote-sandbox/claude-code/remote_sandbo
 Tests marked `integration` use the real container runtime or installed agent CLI. See [verification instructions](docs/demo.md#verification). The Codex CLI fixture uses deterministic loopback model responses and an isolated temporary configuration; it does not call a paid model or change user configuration.
 
 The Codex adapter targets the experimental protocol exercised with
-`codex-cli 0.154.0`. Other versions require compatibility testing.
+`codex-cli 0.164.0`. Other versions require compatibility testing.
