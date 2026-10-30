@@ -94,7 +94,7 @@ the existing client's working-directory translation.
 
 The [shared Claude Code integration](https://github.com/prime-radiant-inc/external-sandbox/tree/main/claude-code) and [Codex setup instructions](https://github.com/prime-radiant-inc/external-sandbox/tree/main/codex) are maintained in `external-sandbox`. Use `EXTERNAL_SANDBOX_API_URL=http://127.0.0.1:8687` for Claude Code and `ws://127.0.0.1:8687/codex` for Codex, with the mounted project paths described in [agent setup](docs/agents.md).
 
-See [agent setup](docs/agents.md), [protocol compatibility](docs/protocol.md),
+See [agent setup](docs/agents.md), [protocol and deliberate differences](docs/protocol.md),
 and [a repeatable team demo](docs/demo.md).
 
 ## Controlled network access

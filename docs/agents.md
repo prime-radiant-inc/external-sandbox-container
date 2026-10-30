@@ -16,7 +16,7 @@ The shared [Claude shell-prefix integration](https://github.com/prime-radiant-in
 
 ## Codex
 
-Follow the shared [Codex setup instructions](https://github.com/prime-radiant-inc/external-sandbox/tree/main/codex), using `ws://127.0.0.1:8687/codex` for this backend. Launch the server with the writable and read-only mounts above and run Codex from the mounted project. See [protocol compatibility](protocol.md) for the backend's supported operations and [verification](demo.md#verification) for its opt-in Codex CLI tests.
+Follow the shared [Codex setup instructions](https://github.com/prime-radiant-inc/external-sandbox/tree/main/codex), using `ws://127.0.0.1:8687/codex` for this backend. Launch the server with the writable and read-only mounts above and run Codex from the mounted project. See [protocol and deliberate differences](protocol.md) for the backend's supported operations and [verification](demo.md#verification) for its opt-in Codex CLI tests.
 
 ## Pi
 

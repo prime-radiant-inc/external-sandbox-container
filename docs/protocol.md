@@ -1,67 +1,19 @@
-# Compatibility contract
+# Protocol and deliberate differences
 
-The reference is `v86-shell-server` 0.2.0's existing client protocol. Endpoints
-and message shapes stay the same while the process and filesystem backend
-changes. Runtime identity, architecture, available binaries, timing, and mount
-implementation naturally differ.
+This server implements the shared External Sandbox protocol. The normative
+definition is [SPEC.md](https://github.com/prime-radiant-inc/external-sandbox/blob/main/SPEC.md)
+in the `external-sandbox` repository, and
+[COVERAGE.md](https://github.com/prime-radiant-inc/external-sandbox/blob/main/COVERAGE.md)
+maps each requirement to the conformance test that exercises it. Run the
+conformance runner against a server to check this backend; see
+[verification](verification.md).
 
-| Route | Behavior |
-| --- | --- |
-| `GET /` | Browser command terminal |
-| `GET /terminal.js` | Bundled WebSocket terminal client |
-| `GET /health` | Runtime readiness, mount mappings, default cwd, active commands |
-| `GET /mounts` | `{ "mounts": [...] }` with host/guest paths and modes |
-| `POST /exec` | Buffered Bash command execution |
-| `WS /exec/ws` | One streaming shell command per connection |
-| `WS /codex` | Codex exec-server JSON-RPC process and filesystem operations |
+The `/codex` route follows the experimental exec-server protocol of Codex CLI
+0.164.0. Unsupported requests fail explicitly. In particular, this server does
+not add PTYs, Codex's local platform sandboxes, remote extension execution, or
+the App Server's `thread/shellCommand` method.
 
-## Shell API
-
-`POST /exec` accepts `command`, `cwd`, `env`, `stdin`, `timeoutMs`, and
-`maxOutputBytes`. `stdin` is a UTF-8 string for HTTP and a boolean for the
-WebSocket start message. The command runs under Bash inside Linux.
-
-Streaming clients send:
-
-```json
-{"type":"start","command":"printf ready; cat; printf problem >&2; exit 7","cwd":"/mnt/project","stdin":true,"timeoutMs":120000,"maxOutputBytes":4194304}
-```
-
-The server sends `started` before output. stdout and stderr are separate
-base64-encoded byte streams:
-
-```json
-{"type":"started","processId":"example"}
-{"type":"stdout","data":"cmVhZHk="}
-```
-
-Send stdin incrementally, with strictly increasing nonnegative integer IDs:
-
-```json
-{"type":"stdin","id":0,"data":"aGVsbG8K"}
-{"type":"stdin_eof"}
-```
-
-The corresponding acknowledgements are `stdin_ack` with the matching `id` and
-`stdin_closed`. Acknowledgement means queued, not necessarily read by the
-program. Output and acknowledgements may interleave. A command finishes with
-one event after all its output:
-
-```json
-{"type":"exit","exitCode":7,"signal":null,"timedOut":false,"outputLimitExceeded":false,"durationMs":123}
-```
-
-Send `{"type":"cancel"}` or close the WebSocket to cancel the process group.
-Timeouts and output caps also stop the process group. A process that deliberately
-escapes its process group is outside per-command cleanup; removing the server's
-container ends its remaining processes. If an escaped descendant retains output
-pipes after the command leader exits, the server returns an explicit error
-after a bounded drain period rather than waiting indefinitely.
-
-An error is `{"type":"error","error":"Explanation"}`. A close without an
-`exit` event is a failed execution, even with close code 1000. Normal command
-exit codes are preserved by the existing Python client; signals map to
-`128 + signal`, timeout to 124, and API/output-limit failure to 125.
+## Guest environment
 
 No host or image environment is implicitly passed to submitted commands. The
 guest agent supplies a fixed minimal environment with Linux `PATH`, `HOME`,
@@ -71,46 +23,22 @@ include proxy/CA settings and configured placeholders. Passing a real API key
 in an explicit request still puts that key inside the container; use
 [host proxy credential substitution](proxy.md) to keep it outside instead.
 
-The browser terminal uses the same `/exec/ws` message shapes. Browser upgrades
-require an exact same-origin `Origin` and the page's per-server token offered
-as `sandbox-token.<token>` alongside the `sandbox-terminal` WebSocket subprotocol.
-The server negotiates only `sandbox-terminal`, never the token. Originless
-command-line clients without browser Fetch Metadata keep their existing access;
-no token or subprotocol is required for those clients. The buffered `/exec` and
-Codex routes continue to reject browser Origin requests.
-
-## Codex exec-server
-
-The adapter supports `initialize`, `initialized`, `environment/info`,
-`environment/status`, process start/read/write/signal/terminate, and the
-filesystem operations needed for native `apply_patch`. Process requests use
-literal argument arrays, cwd, and environment settings. Command output is
-streamed, with sequence numbers for read/replay requests.
-
-Filesystem paths are guest `file://` URIs. The backend resolves them inside the
-container, including paths in its disposable filesystem; they are not host
-filesystem paths interpreted by the Python server. Read-only mounts constrain
-both commands and filesystem RPCs.
-
-The experimental protocol target is Codex CLI 0.164.0. Unsupported requests
-fail explicitly. In particular, this server does not add PTYs, Codex's local
-platform sandboxes, remote extension execution, or the App Server's
-`thread/shellCommand` method.
-
 ## Deliberate differences
+
+Where the specification permits implementation variation, this backend chooses:
 
 - Linux runs in Apple's container runtime rather than an x86 emulator.
 - Docker is a possible future backend, not an accepted backend in this version.
 - The container starts with `--network none`. Optional `--proxy-config` enables
-  HTTP(S) egress through the command pipe to a host Python proxy, using the v86
-  allow-list/credential configuration schema. See [proxy details](proxy.md).
+  HTTP(S) egress through the command pipe to a host Python proxy, using the
+  shared allow-list/credential configuration schema. See [proxy details](proxy.md).
 - Filesystem ownership, permissions, links, and metadata follow Apple's shared
-  filesystem behavior. v86-specific host filesystem guarantees are not claimed.
-  Read-only protection belongs to each mount, rather than v86's per-inode host
-  bridge. Overlapping host roots with mixed read-only/read-write modes are
-  rejected, but pre-existing writable hardlink aliases in separate mounted
-  directories are not detected. Do not share such aliases when relying on a
-  read-only mount: writes through the writable name can change the same inode.
+  filesystem behavior. Read-only protection belongs to each mount, rather than
+  v86's per-inode host bridge. Overlapping host roots with mixed read-only and
+  read-write modes are rejected, but pre-existing writable hardlink aliases in
+  separate mounted directories are not detected. Do not share such aliases when
+  relying on a read-only mount: writes through the writable name can change the
+  same inode.
 - The default image is intentionally small. Tools must be present in the image
   for offline execution, or their download destinations explicitly allowed by
   the optional proxy.
