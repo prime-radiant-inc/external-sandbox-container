@@ -1,7 +1,7 @@
 # Protocol and deliberate differences
 
 This server implements the shared External Sandbox protocol. The normative
-definition is [SPEC.md](https://github.com/prime-radiant-inc/external-sandbox/blob/main/SPEC.md)
+definition is [PROTOCOL.md](https://github.com/prime-radiant-inc/external-sandbox/blob/main/PROTOCOL.md)
 in the `external-sandbox` repository, and
 [COVERAGE.md](https://github.com/prime-radiant-inc/external-sandbox/blob/main/COVERAGE.md)
 maps each requirement to the conformance test that exercises it. Run the

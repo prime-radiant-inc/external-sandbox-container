@@ -1,6 +1,6 @@
 # external-sandbox-container
 
-A Python execution server for coding agents, managed with `uv`. It implements the shared [external sandbox protocol](https://github.com/prime-radiant-inc/external-sandbox/blob/main/SPEC.md), alongside [external-sandbox-v86](https://github.com/prime-radiant-inc/external-sandbox-v86) and [external-sandbox-quicksand](https://github.com/prime-radiant-inc/external-sandbox-quicksand), and executes commands in a Linux container managed by Apple's `container` CLI. This version implements Apple Container only.
+A Python execution server for coding agents, managed with `uv`. It implements the shared [external sandbox protocol](https://github.com/prime-radiant-inc/external-sandbox/blob/main/PROTOCOL.md), alongside [external-sandbox-v86](https://github.com/prime-radiant-inc/external-sandbox-v86) and [external-sandbox-quicksand](https://github.com/prime-radiant-inc/external-sandbox-quicksand), and executes commands in a Linux container managed by Apple's `container` CLI. This version implements Apple Container only.
 
 The experiment: keep the coding-agent integration and client protocol constant,
 and change the execution sandbox. Claude Code uses the existing shell-prefix
