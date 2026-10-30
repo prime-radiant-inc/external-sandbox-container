@@ -27,6 +27,8 @@ in an explicit request still puts that key inside the container; use
 
 Where the specification permits implementation variation, this backend chooses:
 
+- The buffered shell, discovery and Codex routes also reject cross-site
+  `Sec-Fetch-Site` values when no `Origin` is present.
 - Linux runs in Apple's container runtime rather than an x86 emulator.
 - Docker is a possible future backend, not an accepted backend in this version.
 - The container starts with `--network none`. Optional `--proxy-config` enables

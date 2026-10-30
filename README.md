@@ -134,7 +134,8 @@ pipe to the proxy in the host Python process. The container still uses
   shortcut must fail. Do not add a local executor to make it work.
 - The execution listener is for trusted local clients. The browser terminal
   requires a same-origin WebSocket and a per-run token; other execution routes
-  reject browser Origin requests. The proxy management UI has its own token.
+  reject browser Origin requests and cross-site Fetch Metadata. The proxy
+  management UI has its own token.
   Trusted local command-line clients retain their existing API access.
 
 This demonstrates interchangeable execution routes, not a claim that every
