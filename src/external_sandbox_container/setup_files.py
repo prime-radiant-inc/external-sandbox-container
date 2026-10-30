@@ -10,7 +10,7 @@ def write_setup(directory: str | Path) -> Path:
     target = Path(directory).expanduser()
     if target.is_symlink() or (target.exists() and not target.is_dir()):
         raise ValueError(f"Setup destination must be a directory, not a symlink or file: {target}")
-    resources = files("remote_sandbox_container").joinpath("resources")
+    resources = files("external_sandbox_container").joinpath("resources")
     contents = {name: resources.joinpath(name).read_bytes() for name in SETUP_FILES}
     # Preflight every existing file before creating anything. Never replace a
     # user's edited policy or image recipe with a bundled default.

@@ -139,7 +139,7 @@ class AppleContainerBackend:
         self.mounts = mounts or []
         self.image, self.container_bin = image, container_bin
         self.cpus, self.memory = cpus, memory
-        self.name = "remote-sandbox-container-" + uuid.uuid4().hex[:12]
+        self.name = "external-sandbox-container-" + uuid.uuid4().hex[:12]
         self.child = None
         self.processes = {}
         self.pending = {}
@@ -171,7 +171,7 @@ class AppleContainerBackend:
     def command(self):
         args = [self.container_bin, "run", "--rm", "--interactive", "--name", self.name,
                 "--network", "none", "--cap-drop", "ALL", "--cpus", str(self.cpus),
-                "--memory", f"{self.memory}M", "--progress", "none", "--env", "REMOTE_SANDBOX_CONTAINER_GUEST=1",
+                "--memory", f"{self.memory}M", "--progress", "none", "--env", "EXTERNAL_SANDBOX_CONTAINER_GUEST=1",
                 "--entrypoint", "python3"]
         for mount in self.mounts:
             for target in [mount.guestPath, *mount.preservedPaths]:
@@ -183,8 +183,8 @@ class AppleContainerBackend:
         runtime = str(Path(__file__).resolve().parent)
         if "," in runtime:
             raise ValueError("Runtime installation path cannot contain commas")
-        args += ["--mount", f"type=bind,source={runtime},target=/opt/remote-sandbox-container,readonly",
-                 self.image, "-I", "-u", "/opt/remote-sandbox-container/guest_agent.py"]
+        args += ["--mount", f"type=bind,source={runtime},target=/opt/external-sandbox-container,readonly",
+                 self.image, "-I", "-u", "/opt/external-sandbox-container/guest_agent.py"]
         return args
 
     async def boot(self):

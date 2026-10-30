@@ -7,7 +7,7 @@ import os
 import pytest
 import pytest_asyncio
 
-from remote_sandbox_container.backend import AppleContainerBackend, parse_mounts
+from external_sandbox_container.backend import AppleContainerBackend, parse_mounts
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio(loop_scope='module'),
               pytest.mark.skipif(os.environ.get('RUN_APPLE_CONTAINER_TESTS') != '1', reason='Set RUN_APPLE_CONTAINER_TESTS=1')]

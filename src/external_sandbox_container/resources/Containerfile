@@ -3,7 +3,7 @@ FROM ghcr.io/astral-sh/uv:0.12.15 AS uv
 FROM python:3.13-slim
 
 # Network is used to prepare the image, before the execution sandbox starts.
-# At runtime remote-sandbox-container still launches this image with --network none.
+# At runtime external-sandbox-container still launches this image with --network none.
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends \
         bash git curl procps ca-certificates libstdc++6 ripgrep jq patch unzip \

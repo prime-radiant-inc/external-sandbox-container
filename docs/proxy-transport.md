@@ -12,7 +12,7 @@ for its helper's initial `ready` event, then sends a `configure_proxy` RPC conta
 only the public CA certificate. Boot completes only after that RPC succeeds.
 
 The helper writes a public CA bundle at
-`/run/remote-sandbox-proxy/ca-bundle.pem`, including the image's existing system roots,
+`/run/external-sandbox-proxy/ca-bundle.pem`, including the image's existing system roots,
 and starts a listener on a dynamically allocated guest loopback port. The default
 command environment adds:
 

@@ -4,19 +4,19 @@ from importlib.resources import files
 
 import pytest
 
-from remote_sandbox_container import cli
-from remote_sandbox_container.setup_files import SETUP_FILES, write_setup
+from external_sandbox_container import cli
+from external_sandbox_container.setup_files import SETUP_FILES, write_setup
 
 
 def test_cli_exports_bundled_files_without_starting_server(tmp_path, monkeypatch, capsys):
     target = tmp_path / "nested" / "setup"
-    monkeypatch.setattr(sys, "argv", ["remote-sandbox-container", "--write-setup", str(target)])
+    monkeypatch.setattr(sys, "argv", ["external-sandbox-container", "--write-setup", str(target)])
     monkeypatch.setattr(cli, "serve", lambda args: pytest.fail("Must not start the server"))
     cli.main()
     assert str(target.resolve()) in capsys.readouterr().out
     assert {p.name for p in target.iterdir()} == {"Containerfile", "proxy.json"}
     for name in SETUP_FILES:
-        assert (target / name).read_bytes() == files("remote_sandbox_container").joinpath("resources", name).read_bytes()
+        assert (target / name).read_bytes() == files("external_sandbox_container").joinpath("resources", name).read_bytes()
     mtimes = {p.name: p.stat().st_mtime_ns for p in target.iterdir()}
     assert write_setup(target) == target.resolve()
     assert {p.name: p.stat().st_mtime_ns for p in target.iterdir()} == mtimes

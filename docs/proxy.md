@@ -13,7 +13,7 @@ guest command -> guest loopback proxy -> framed command pipe
 ## Start and inspect
 
 ```sh
-uv run remote-sandbox-container --proxy-config examples/proxy-public.json
+uv run external-sandbox-container --proxy-config examples/proxy-public.json
 ```
 
 The public example permits GET/HEAD requests to `https://example.com` and needs
@@ -53,7 +53,7 @@ to `https://api.openai.com/v1/responses` using a placeholder. Supply the real
 management, then start:
 
 ```sh
-uv run remote-sandbox-container --proxy-config examples/proxy.json
+uv run external-sandbox-container --proxy-config examples/proxy.json
 ```
 
 `guestEnv.OPENAI_API_KEY` is a literal placeholder, never a host environment

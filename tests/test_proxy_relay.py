@@ -10,9 +10,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from remote_sandbox_container.backend import AppleContainerBackend
-from remote_sandbox_container.guest_proxy import GuestProxy
-from remote_sandbox_container.proxy_relay import CHUNK_SIZE, MAX_STREAMS, ProxyRelay
+from external_sandbox_container.backend import AppleContainerBackend
+from external_sandbox_container.guest_proxy import GuestProxy
+from external_sandbox_container.proxy_relay import CHUNK_SIZE, MAX_STREAMS, ProxyRelay
 
 
 def frame(action, ident=1, **fields):
@@ -311,7 +311,7 @@ class FakeChild:
         self.messages.append(value)
         if value.get("method") == "configure_proxy":
             self.stdout.feed_data(framed({"id": value["id"], "result": {"environment": {
-                "HTTP_PROXY": "http://127.0.0.1:3128", "SSL_CERT_FILE": "/run/remote-sandbox-proxy/ca-bundle.pem"}}}))
+                "HTTP_PROXY": "http://127.0.0.1:3128", "SSL_CERT_FILE": "/run/external-sandbox-proxy/ca-bundle.pem"}}}))
 
     async def drain(self):
         pass
@@ -341,7 +341,7 @@ async def test_backend_boot_waits_for_proxy_configuration_and_preserves_network_
     await backend.boot()
     try:
         assert backend.environment() == {"PATH": "/usr/bin", "API_KEY": "placeholder",
-            "HTTP_PROXY": "http://127.0.0.1:3128", "SSL_CERT_FILE": "/run/remote-sandbox-proxy/ca-bundle.pem"}
+            "HTTP_PROXY": "http://127.0.0.1:3128", "SSL_CERT_FILE": "/run/external-sandbox-proxy/ca-bundle.pem"}
         assert child.messages == [{"id": 1, "method": "configure_proxy", "params": {"caPem": "PUBLIC CA"}}]
         assert backend.proxy_relay.address == proxy.address
         backend.proxy_relay.feed(frame("open"))
@@ -372,8 +372,8 @@ async def test_verified_https_and_credential_substitution_through_full_relay():
     """Default Python TLS verification must work through CONNECT and both relays."""
     from aiohttp import web
     import h11
-    from remote_sandbox_container.proxy import HostProxy, ProxyPolicy
-    from remote_sandbox_container.proxy_certificates import CertificateAuthority
+    from external_sandbox_container.proxy import HostProxy, ProxyPolicy
+    from external_sandbox_container.proxy_certificates import CertificateAuthority
 
     payload = os.urandom(256 * 1024)
     seen = []

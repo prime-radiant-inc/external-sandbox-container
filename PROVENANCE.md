@@ -46,3 +46,7 @@ The Claude shell-prefix wrapper, Python streaming client, and their configuratio
 ## Shared Pi extension relocation — 9 October 2026
 
 The Pi extension originally developed in this repository is now maintained in [remote-sandbox/pi](https://github.com/prime-radiant-inc/remote-sandbox/tree/main/pi), alongside the other shared agent integrations. Its source, tests, lockfile, and documentation were moved together, and the npm package is now `remote-sandbox-pi`. The server protocol and default connection ports are unchanged; earlier Pi verification results describe the implementation before this relocation.
+
+## Rename to External Sandbox — 30 October 2026
+
+The project, its GitHub repository, distribution, command and Python module are now `external-sandbox-container` / `external_sandbox_container`, matching the rename of the shared protocol project from Remote Sandbox to External Sandbox. Environment variables use the `EXTERNAL_SANDBOX_` prefix, guest paths such as `/opt/external-sandbox-container` and `/run/external-sandbox-proxy` follow the new name, and the shared UI bundle is `external-sandbox-ui` 0.3.0. Wire protocol, default ports and behaviour are unchanged. The names, paths and hashes recorded above describe earlier states and are preserved as written.
