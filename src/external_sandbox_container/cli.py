@@ -10,6 +10,7 @@ from aiohttp import web
 
 from .api import create_app
 from .backend import AppleContainerBackend, parse_mounts
+from .images import MINIMAL_IMAGE, ensure_tools_image
 from .proxy import HostProxy, load_policy
 
 
@@ -24,7 +25,9 @@ def parser():
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument("paths", nargs="*", help="Writable host directories (same as --mount-rw)")
     result.add_argument("--backend", choices=["apple"], default="apple")
-    result.add_argument("--image", default="python:3.13-slim", help="Linux OCI image with python3 and /bin/bash")
+    result.add_argument("--image", help="Linux OCI image with python3 and /bin/bash (default: the development tools "
+                                         f"image, built on first run; {MINIMAL_IMAGE} is a smaller alternative)")
+    result.add_argument("--prepare-image", action="store_true", help="Build the development tools image, then exit")
     result.add_argument("--container-bin", default="container", help="Apple Container CLI executable")
     result.add_argument("--port", type=int, default=8687, help="Loopback TCP port (default: 8687); 0 selects an available port")
     result.add_argument("--cpus", type=int, default=2)
@@ -35,6 +38,10 @@ def parser():
     result.add_argument("--proxy-config", metavar="PATH", help="Enable host-enforced HTTP(S) egress using this allow-list JSON file")
     result.add_argument("--write-setup", metavar="DIR", help="Write the bundled image recipe and proxy policy, then exit")
     return result
+
+
+async def select_image(args):
+    return args.image or await ensure_tools_image(args.container_bin)
 
 
 async def serve(args):
@@ -52,6 +59,7 @@ async def serve(args):
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, stop.set)
     async def start_sandbox():
+        backend.image = await select_image(args)
         if proxy:
             await proxy.start()
         await backend.boot()
@@ -108,6 +116,11 @@ def main():
             from .setup_files import write_setup
 
             print(f"Setup files ready in {write_setup(args.write_setup)}")
+            return
+        if args.prepare_image:
+            if args.image:
+                raise ValueError("--prepare-image only builds the development tools image; omit --image")
+            print(f"Image ready: {asyncio.run(ensure_tools_image(args.container_bin))}")
             return
         asyncio.run(serve(args))
     except (OSError, ValueError, RuntimeError, TimeoutError) as exc:

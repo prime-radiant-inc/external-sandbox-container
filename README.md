@@ -17,12 +17,12 @@ This project was previously `sandbox-exec-server` with Python module `sandbox_ex
 
 Requirements: an Apple silicon Mac with Apple's
 [`container`](https://github.com/apple/container) installed and running, and
-[`uv`](https://docs.astral.sh/uv/). The container image must provide `python3` and
-`bash`; the default is `python:3.13-slim`.
+[`uv`](https://docs.astral.sh/uv/). The first start builds the development tools
+image, which needs host network access; later starts reuse it. `--prepare-image`
+builds it and exits.
 
 ```sh
 container system start
-container image pull python:3.13-slim
 uv sync
 uv run external-sandbox-container --port 8687 --preserve-paths \
   --mount-rw project=/absolute/path/to/project \
@@ -61,7 +61,7 @@ The command creates the directory if needed, writes the files below, and exits w
 
 Rerunning the command accepts files whose contents are unchanged. It refuses to overwrite edited files, directories in place of files, or symlinks at the destination or output filenames; use a new destination if you have customized the setup. Conflicts are checked before any files are written.
 
-See [image build instructions](docs/demo.md#optional-tool-image) for the exported image recipe and [agent setup](docs/agents.md) for connecting coding agents. Claude shell-prefix helpers live in the shared [external-sandbox integration](https://github.com/prime-radiant-inc/external-sandbox/tree/main/claude-code); `--write-setup` exports only the image recipe and proxy policy.
+See [image details](docs/demo.md#development-tools-image) for the exported image recipe and [agent setup](docs/agents.md) for connecting coding agents. Claude shell-prefix helpers live in the shared [external-sandbox integration](https://github.com/prime-radiant-inc/external-sandbox/tree/main/claude-code); `--write-setup` exports only the image recipe and proxy policy.
 
 ## Browser terminal
 
@@ -141,11 +141,11 @@ This demonstrates interchangeable execution routes, not a claim that every
 operation performed by an agent is contained. Isolation and filesystem details
 differ between Apple's container runtime and the v86 prototype.
 
-For an image with Node.js 24 LTS/npm, uv/uvx, ripgrep (`rg`), jq, patch, unzip,
-curl, Git, procps (`ps`), and CA certificates in addition to Python and Bash, see
-[the example Containerfile](examples/Containerfile) and
-[image build instructions](docs/demo.md#optional-tool-image). The default image
-remains deliberately small.
+The default image adds Node.js 24 LTS/npm, uv/uvx, ripgrep (`rg`), jq, patch, unzip,
+curl, Git, procps (`ps`), and CA certificates to Python and Bash, using
+[this Containerfile](examples/Containerfile). `--image` selects any other image that
+provides `python3` and `bash`, such as the smaller `python:3.13-slim`. See
+[image details](docs/demo.md#development-tools-image).
 
 ## Test
 

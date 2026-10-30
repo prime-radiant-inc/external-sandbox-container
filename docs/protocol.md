@@ -39,6 +39,6 @@ Where the specification permits implementation variation, this backend chooses:
   separate mounted directories are not detected. Do not share such aliases when
   relying on a read-only mount: writes through the writable name can change the
   same inode.
-- The default image is intentionally small. Tools must be present in the image
-  for offline execution, or their download destinations explicitly allowed by
-  the optional proxy.
+- The default image is built on first run from a bundled recipe with common
+  development tools. Other tools must be added to the image, or their download
+  destinations explicitly allowed by the optional proxy.

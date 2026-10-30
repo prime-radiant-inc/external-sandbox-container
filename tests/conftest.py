@@ -15,3 +15,15 @@ def external_streaming_client():
     if not path.is_file():
         pytest.fail(f"EXTERNAL_SANDBOX_CLIENT does not name a file: {path}")
     return path
+
+
+@pytest.fixture(autouse=True)
+def no_real_image_build(request, monkeypatch):
+    """Unit tests must never start a real image build through the CLI default."""
+    if request.node.get_closest_marker("integration") or request.path.name == "test_images.py":
+        return
+
+    async def refuse(container_bin="container"):
+        return "unit-test-image:1"
+
+    monkeypatch.setattr("external_sandbox_container.cli.ensure_tools_image", refuse)

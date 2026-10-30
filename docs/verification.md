@@ -204,3 +204,9 @@ EXTERNAL_SANDBOX_CLIENT=/absolute/path/to/external-sandbox/claude-code/external_
 ```
 
 Ruff, whitespace checks, and `uv build` passed. The rebuilt wheel was installed in an isolated uv environment, where CLI help described only the image recipe and proxy policy and `--write-setup` exported exactly `Containerfile` and `proxy.json`. Archive inspection confirmed that neither the wheel nor the source distribution contains shell-prefix wrapper/client copies or the relocated settings tests. Earlier counts and bundled-client references above describe their historical revisions.
+
+## Development tools image as the default — 30 October 2026
+
+With no `--image`, the server built and selected `external-sandbox-container-tools:d728998988e5` (159.1 MB). Against that server, the conformance runner passed 105 tests, both Codex CLI fixtures passed with Codex 0.164.0, and all 12 Pi integration tests passed. The real-container integration suite passed 20 tests with the tools image and 16 with `python:3.13-slim`; the Codex fixtures it skips need a running server and ran separately.
+
+Boundary checks repeated on the tools image: host paths and a symlink to a host file were not reachable, writes and `chmod` on a read-only mount failed, `mount` was denied, effective capabilities were zero, and only the loopback interface existed. `curl`, `/dev/tcp`, `npm` and `uv` could not reach any network destination. This repeats part of the earlier audit, not all of it.

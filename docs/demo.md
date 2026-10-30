@@ -46,24 +46,32 @@ Claude's host file tools have a different scope, as described in the setup
 document. Do not use `!command` in Codex to run the demo: its local-only shortcut
 is intentionally unavailable.
 
-## Optional tool image
+## Development tools image
 
-The default Python image is enough for this arithmetic demo. The included
-`examples/Containerfile` adds Node.js 24 LTS/npm/npx, uv/uvx, ripgrep (`rg`), jq,
-patch, unzip, curl, Git, procps (including `ps`), and CA certificates for broader
-coding tasks. Node 24.21.0 and uv 0.12.15 are copied from their official images;
-the runtime image remains based on `python:3.13-slim`. Build it while host
-networking is available:
+Without `--image`, the server uses a development tools image built from its bundled
+recipe, identical to `examples/Containerfile`. It adds Node.js 24 LTS/npm/npx, uv/uvx,
+ripgrep (`rg`), jq, patch, unzip, curl, Git, procps (including `ps`), and CA
+certificates to `python:3.13-slim`. Node 24.21.0 and uv 0.12.15 are copied from their
+official images; the Debian packages are the current ones when the image is built.
+
+The first start builds it, which needs host network access. The tag
+`external-sandbox-container-tools:<hash>` comes from the recipe, so later starts reuse
+the image until the recipe changes. To build it ahead of time:
 
 ```sh
-container build --tag sandbox-demo:latest --file examples/Containerfile .
+uv run external-sandbox-container --prepare-image
 ```
 
-The build options follow Apple's
+Building starts Apple's `buildkit` builder container, which keeps running afterward.
+`container builder stop` stops it.
+
+To use a smaller image, pass `--image python:3.13-slim`. It has Python and Bash but no
+Git, ripgrep, curl, Node.js or uv, and Pi's `find` and `grep` tools fail without
+ripgrep. To customize the tools, export the recipe with `--write-setup`, build it with
+your own tag, and pass that tag to `--image`. The build options follow Apple's
 [container command reference](https://github.com/apple/container/blob/main/docs/command-reference.md#container-build).
 
-Then pass `--image sandbox-demo:latest` to `uv run external-sandbox-container` alongside
-the same mount options. Image building and package downloads happen before the
+Image building and package downloads happen before the
 execution sandbox starts; commands still run with `--network none`. Having curl
 installed does not give the offline container network access. To grant selected
 HTTP(S) access without enabling a network interface, use the optional
