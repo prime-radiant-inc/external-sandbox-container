@@ -9,10 +9,6 @@ filesystem operations and native `apply_patch`.
 
 Pi uses the shared [Pi extension](https://github.com/prime-radiant-inc/external-sandbox/tree/main/pi), which routes its shell, file, and search tools plus `!`/`!!` commands through `/exec/ws`. Set `--sandbox-url http://127.0.0.1:8687` for this backend.
 
-## Renamed project
-
-This project was previously `sandbox-exec-server` with Python module `sandbox_exec_server`. The distribution, command, and module are now `external-sandbox-container`, `external-sandbox-container`, and `external_sandbox_container`. Run `uv sync --locked --reinstall` after moving or updating an existing checkout, update command/import paths, and obtain Claude shell-prefix helpers from the shared `external-sandbox` repository. Ports and wire protocol identifiers are unchanged. Historical provenance and verification records retain the names used when those results were recorded.
-
 ## Start
 
 Requirements: an Apple silicon Mac with Apple's
@@ -23,11 +19,14 @@ builds it and exits.
 
 ```sh
 container system start
-uv sync
-uv run external-sandbox-container --port 8687 --preserve-paths \
+uvx external-sandbox-container --preserve-paths \
   --mount-rw project=/absolute/path/to/project \
   --mount-ro reference=/absolute/path/to/reference
 ```
+
+`uvx` downloads and runs the latest release from PyPI. To install the command
+permanently, use `uv tool install external-sandbox-container`. From a source
+checkout, use `uv run external-sandbox-container` instead.
 
 The server defaults to `127.0.0.1:8687`, so it can run alongside the v86 server
 on port `8686` and the Quicksand server on port `8688`. It creates its own
@@ -41,15 +40,15 @@ The mounts appear at `/mnt/project` and `/mnt/reference` in Linux.
 container, for clients that send absolute paths. The first mount is the default
 working directory; without mounts, it is `/workspace`.
 
-Run `uv run external-sandbox-container --help` for image, resource, and container CLI
+Run `uvx external-sandbox-container --help` for image, resource, and container CLI
 options. `--container-bin` selects a particular Apple `container` executable.
 
 ## Export setup files
 
-Use `--write-setup DIR` to copy the bundled setup files into a directory, including when running from an installed package without a source checkout:
+Use `--write-setup DIR` to copy the bundled setup files into a directory:
 
 ```sh
-uv run external-sandbox-container --write-setup ./sandbox-config
+uvx external-sandbox-container --write-setup ./sandbox-config
 ```
 
 The command creates the directory if needed, writes the files below, and exits without starting a server or building a container image. Apple Container does not need to be running for this step.
@@ -61,7 +60,7 @@ The command creates the directory if needed, writes the files below, and exits w
 
 Rerunning the command accepts files whose contents are unchanged. It refuses to overwrite edited files, directories in place of files, or symlinks at the destination or output filenames; use a new destination if you have customized the setup. Conflicts are checked before any files are written.
 
-See [image details](docs/demo.md#development-tools-image) for the exported image recipe and [agent setup](docs/agents.md) for connecting coding agents. Claude shell-prefix helpers live in the shared [external-sandbox integration](https://github.com/prime-radiant-inc/external-sandbox/tree/main/claude-code); `--write-setup` exports only the image recipe and proxy policy.
+See [image details](https://github.com/prime-radiant-inc/external-sandbox-container/blob/main/docs/demo.md#development-tools-image) for the exported image recipe and [agent setup](https://github.com/prime-radiant-inc/external-sandbox-container/blob/main/docs/agents.md) for connecting coding agents. Claude shell-prefix helpers live in the shared [external-sandbox integration](https://github.com/prime-radiant-inc/external-sandbox/tree/main/claude-code); `--write-setup` exports only the image recipe and proxy policy.
 
 ## Browser terminal
 
@@ -74,9 +73,9 @@ limit, and examples for streaming output, interactive input, and HTTPS access.
 Each run starts a new shell in the same container. Files persist between runs;
 use the working-directory field instead of expecting a previous `cd` to carry
 over. This uses pipes, not a PTY. For a Python REPL, run `python3 -u -i`.
-See [terminal controls and behavior](docs/terminal.md).
+See [terminal controls and behavior](https://github.com/prime-radiant-inc/external-sandbox-container/blob/main/docs/terminal.md).
 
-The HTML, CSS, JavaScript, and frontend tests are a pinned bundle from the independent `external-sandbox-ui` project. Normal installs include all runtime assets. See [shared UI development](docs/ui.md) for the update command, integrity checks, and packaging details.
+The HTML, CSS, JavaScript, and frontend tests are a pinned bundle from the independent `external-sandbox-ui` project. Normal installs include all runtime assets. See [shared UI development](https://github.com/prime-radiant-inc/external-sandbox-container/blob/main/docs/ui.md) for the update command, integrity checks, and packaging details.
 
 ## Try the existing API
 
@@ -92,30 +91,31 @@ curl -sS http://127.0.0.1:8687/exec \
 HTTP request with a nonzero `exitCode`. `GET /mounts` returns mount mappings for
 the existing client's working-directory translation.
 
-The [shared Claude Code integration](https://github.com/prime-radiant-inc/external-sandbox/tree/main/claude-code) and [Codex setup instructions](https://github.com/prime-radiant-inc/external-sandbox/tree/main/codex) are maintained in `external-sandbox`. Use `EXTERNAL_SANDBOX_API_URL=http://127.0.0.1:8687` for Claude Code and `ws://127.0.0.1:8687/codex` for Codex, with the mounted project paths described in [agent setup](docs/agents.md).
+The [shared Claude Code integration](https://github.com/prime-radiant-inc/external-sandbox/tree/main/claude-code) and [Codex setup instructions](https://github.com/prime-radiant-inc/external-sandbox/tree/main/codex) are maintained in `external-sandbox`. Use `EXTERNAL_SANDBOX_API_URL=http://127.0.0.1:8687` for Claude Code and `ws://127.0.0.1:8687/codex` for Codex, with the mounted project paths described in [agent setup](https://github.com/prime-radiant-inc/external-sandbox-container/blob/main/docs/agents.md).
 
-See [agent setup](docs/agents.md), [protocol and deliberate differences](docs/protocol.md),
-and [a repeatable team demo](docs/demo.md).
+See [agent setup](https://github.com/prime-radiant-inc/external-sandbox-container/blob/main/docs/agents.md), [protocol and deliberate differences](https://github.com/prime-radiant-inc/external-sandbox-container/blob/main/docs/protocol.md),
+and [a repeatable team demo](https://github.com/prime-radiant-inc/external-sandbox-container/blob/main/docs/demo.md).
 
 ## Controlled network access
 
-The container remains offline unless you opt into a host-enforced HTTP(S) proxy:
+The container remains offline unless you opt into a host-enforced HTTP(S) proxy.
+Using the starter policy exported by `--write-setup` above:
 
 ```sh
-uv run external-sandbox-container --proxy-config examples/proxy-public.json
+uvx external-sandbox-container --proxy-config ./sandbox-config/proxy.json
 ```
 
-This example permits GET/HEAD requests to `https://example.com` only. Open
+This policy permits GET/HEAD requests to `https://example.com` only. Open
 `http://127.0.0.1:8687/proxy` to edit the policy and inspect recent requests.
 Changes in the UI apply to the running server; save your JSON separately to
-reuse it after restarting. See [proxy setup and security](docs/proxy.md).
+reuse it after restarting. See [proxy setup and security](https://github.com/prime-radiant-inc/external-sandbox-container/blob/main/docs/proxy.md).
 
 Commands receive ordinary proxy environment variables and a public CA
 certificate. A small guest listener relays traffic over the existing command
 pipe to the proxy in the host Python process. The container still uses
 `--network none`; removing proxy settings cannot enable direct network access.
 
-[examples/proxy.json](examples/proxy.json) also demonstrates substituting a placeholder with an API key from the host environment. It requires `OPENAI_API_KEY` on the host before startup. Real keys are not provisioned to the container or displayed by the management UI. An allowed upstream can transform and echo a credential despite literal response redaction; use credential rules only with trusted services and narrow their methods and paths. See [proxy scope](docs/proxy.md#boundary-and-scope).
+[examples/proxy.json](https://github.com/prime-radiant-inc/external-sandbox-container/blob/main/examples/proxy.json) also demonstrates substituting a placeholder with an API key from the host environment. It requires `OPENAI_API_KEY` on the host before startup. Real keys are not provisioned to the container or displayed by the management UI. An allowed upstream can transform and echo a credential despite literal response redaction; use credential rules only with trusted services and narrow their methods and paths. See [proxy scope](https://github.com/prime-radiant-inc/external-sandbox-container/blob/main/docs/proxy.md#boundary-and-scope).
 
 ## Scope
 
@@ -144,9 +144,9 @@ differ between Apple's container runtime and the v86 prototype.
 
 The default image adds Node.js 24 LTS/npm, uv/uvx, ripgrep (`rg`), jq, patch, unzip,
 curl, Git, procps (`ps`), and CA certificates to Python and Bash, using
-[this Containerfile](examples/Containerfile). `--image` selects any other image that
+[this Containerfile](https://github.com/prime-radiant-inc/external-sandbox-container/blob/main/examples/Containerfile). `--image` selects any other image that
 provides `python3` and `bash`, such as the smaller `python:3.13-slim`. See
-[image details](docs/demo.md#development-tools-image).
+[image details](https://github.com/prime-radiant-inc/external-sandbox-container/blob/main/docs/demo.md#development-tools-image).
 
 ## Test
 
@@ -155,7 +155,7 @@ unchanged Python client, and Codex CLI 0.154.0. The terminal update passed **250
 Python tests and 15 JavaScript tests**; the two separately configured Codex tests
 were not repeated in that run. The expanded tool image subsequently passed
 **254 Python tests**, including Node and uv requests through the managed proxy.
-See [verification](docs/verification.md) for the tested image digests, package
+See [verification](https://github.com/prime-radiant-inc/external-sandbox-container/blob/main/docs/verification.md) for the tested image digests, package
 checks, and reproducible commands.
 
 ```sh
@@ -174,7 +174,7 @@ EXTERNAL_SANDBOX_CLIENT=/absolute/path/to/external-sandbox/claude-code/external_
   uv run pytest -q tests/test_real_clients.py
 ```
 
-Tests marked `integration` use the real container runtime or installed agent CLI. See [verification instructions](docs/demo.md#verification). The Codex CLI fixture uses deterministic loopback model responses and an isolated temporary configuration; it does not call a paid model or change user configuration.
+Tests marked `integration` use the real container runtime or installed agent CLI. See [verification instructions](https://github.com/prime-radiant-inc/external-sandbox-container/blob/main/docs/demo.md#verification). The Codex CLI fixture uses deterministic loopback model responses and an isolated temporary configuration; it does not call a paid model or change user configuration.
 
 The Codex adapter targets the experimental protocol exercised with
 `codex-cli 0.164.0`. Other versions require compatibility testing.

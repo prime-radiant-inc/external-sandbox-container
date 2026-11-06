@@ -12,7 +12,7 @@ The coding-agent process and its model connection continue running on the Mac. T
 
 ## Claude Code
 
-The shared [Claude shell-prefix integration](https://github.com/prime-radiant-inc/external-sandbox/tree/main/claude-code) is maintained in the `external-sandbox` repository. Follow its setup instructions using `EXTERNAL_SANDBOX_API_URL=http://127.0.0.1:8687` for this backend. Start the container with the project mounted and `--preserve-paths` as above; Claude's temporary bookkeeping directory must be inside a writable mount. The backend package no longer bundles the shell wrapper or Python client.
+The shared [Claude shell-prefix integration](https://github.com/prime-radiant-inc/external-sandbox/tree/main/claude-code) is maintained in the `external-sandbox` repository. Follow its setup instructions using `EXTERNAL_SANDBOX_API_URL=http://127.0.0.1:8687` for this backend. Start the container with the project mounted and `--preserve-paths` as above; Claude's temporary bookkeeping directory must be inside a writable mount.
 
 ## Codex
 
