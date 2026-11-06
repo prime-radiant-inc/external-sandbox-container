@@ -2,6 +2,8 @@
 name = "external-sandbox-container"
 version = "0.1.2"
 description = "Bring your own sandbox to coding agents: compatible shell and Codex execution APIs"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 readme = "README.md"
 authors = [
     { name = "Simon Willison", email = "swillison@gmail.com" }
