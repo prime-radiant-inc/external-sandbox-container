@@ -417,6 +417,57 @@ def test_upstream_certificates_are_checked_against_the_system_trust_store_by_def
     assert context.verify_mode == ssl.CERT_REQUIRED and context.check_hostname
 
 
+async def test_ssl_cert_file_sets_upstream_trust_on_every_platform(local_dns, monkeypatch, tmp_path):
+    """A self-signed upstream certificate named by SSL_CERT_FILE, as the conformance fixture supplies."""
+    import datetime
+
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.x509.oid import NameOID
+
+    key = ec.generate_private_key(ec.SECP256R1())
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Self-signed upstream")])
+    now = datetime.datetime.now(datetime.timezone.utc)
+    certificate = (
+        x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(key.public_key())
+        .serial_number(x509.random_serial_number()).not_valid_before(now - datetime.timedelta(minutes=5))
+        .not_valid_after(now + datetime.timedelta(days=1))
+        .add_extension(x509.BasicConstraints(ca=True, path_length=0), critical=True)
+        .add_extension(x509.SubjectAlternativeName([x509.DNSName("upstream.example.test")]), critical=False)
+        .sign(key, hashes.SHA256())
+    )
+    cert_path, key_path = tmp_path / "cert.pem", tmp_path / "key.pem"
+    cert_path.write_bytes(certificate.public_bytes(serialization.Encoding.PEM))
+    key_path.write_bytes(key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                                           serialization.NoEncryption()))
+    server_tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    server_tls.load_cert_chain(cert_path, key_path)
+
+    async def handler(request):
+        return web.Response(text="ok")
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    runner = web.AppRunner(app, access_log=None)
+    await runner.setup()
+    site = web.TCPSite(runner, "127.0.0.1", 0, ssl_context=server_tls)
+    await site.start()
+    origin = "https://upstream.example.test:%d" % site._server.sockets[0].getsockname()[1]
+    monkeypatch.setenv("SSL_CERT_FILE", str(cert_path))
+    proxy = HostProxy(ProxyPolicy.from_config({"allow": [{"origin": origin, "allowCidrs": ["127.0.0.0/8"]}]}))
+    await proxy.start()
+    try:
+        async with aiohttp.ClientSession() as client:
+            async with client.get(origin + "/", proxy=proxy_url(proxy),
+                                  ssl=ssl.create_default_context(cadata=proxy.ca_pem)) as response:
+                assert response.status == 200
+                assert await response.text() == "ok"
+    finally:
+        await proxy.close()
+        await runner.cleanup()
+
+
 async def test_client_hanging_up_mid_response_is_recorded_as_allowed_with_the_upstream_status():
     async def handler(request):
         response = web.StreamResponse()
