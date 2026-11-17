@@ -169,8 +169,25 @@ def _absolute_url(target: str) -> str:
         raise PolicyError() from None
 
 
+def upstream_proxy_url(value: str) -> str:
+    """Validate the explicit HTTP proxy endpoint without accepting credentials."""
+    try:
+        parts = urlsplit(value)
+        if (parts.scheme != "http" or parts.port is None
+                or value != f"http://{parts.netloc}"):
+            raise ValueError()
+        _origin_for_authority(parts.netloc, "http")
+    except (ValueError, TypeError):
+        raise ValueError("Upstream proxy must be http://host:port without credentials or a path") from None
+    return value
+
+
 class HostProxy:
-    def __init__(self, policy: ProxyPolicy, *, upstream_ssl_context: ssl.SSLContext | None = None):
+    def __init__(self, policy: ProxyPolicy, *, upstream_ssl_context: ssl.SSLContext | None = None,
+                 upstream_proxy: str | None = None):
+        self.upstream_proxy = upstream_proxy_url(upstream_proxy) if upstream_proxy is not None else None
+        if self.upstream_proxy and any(rule.ranges is not None for rule in policy.rules.values()):
+            raise PolicyConfigError("allowCidrs cannot be enforced with an upstream proxy")
         self.policy = policy
         self._ca = CertificateAuthority()
         self._contexts: dict[str, ssl.SSLContext] = {}
@@ -227,6 +244,8 @@ class HostProxy:
 
     def update_policy(self, config):
         replacement = ProxyPolicy.from_config(config, self.policy._secrets)
+        if self.upstream_proxy and any(rule.ranges is not None for rule in replacement.rules.values()):
+            raise PolicyConfigError("allowCidrs cannot be enforced with an upstream proxy")
         if replacement.guest_env != self.policy.guest_env:
             raise PolicyConfigError("Changing guestEnv requires restarting the server")
         self.policy = replacement
@@ -458,7 +477,8 @@ class HostProxy:
         outgoing["host"] = urlsplit(url).netloc
         outgoing["accept-encoding"] = "identity"
         outgoing["connection"] = "close"
-        resolver = _PinnedResolver(host, address, family)
+        # A forward proxy resolves the target itself; only direct egress can pin it.
+        resolver = None if self.upstream_proxy else _PinnedResolver(host, address, family)
         connector = aiohttp.TCPConnector(resolver=resolver, use_dns_cache=False, force_close=True,
                                         limit=1, ssl=self._upstream_ssl)
         timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT, connect=15, sock_read=IDLE_TIMEOUT)
@@ -468,7 +488,7 @@ class HostProxy:
                                          max_line_size=MAX_HEADERS, max_field_size=MAX_HEADERS) as session:
             async with session.request(method, URL(url, encoded=True), headers=outgoing,
                                        data=body if body else None, allow_redirects=False,
-                                       proxy=None) as response:
+                                       proxy=self.upstream_proxy) as response:
                 if response.status == 101:
                     raise ProxyFailure(502, "upstream_upgrade_not_supported")
                 if (len(response.raw_headers) > MAX_HEADER_COUNT

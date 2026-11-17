@@ -48,16 +48,53 @@ opens. Shutdown stops API work, the guest/relay/container, and then the host
 proxy. A broken proxy connection fails the request without falling back to
 direct networking.
 
+## Upstream forward proxy
+
+For hosts that require a corporate proxy or a local proxy such as Clash/mihomo,
+route allowed requests through an explicitly configured HTTP forward proxy:
+
+```sh
+uv run external-sandbox-container --proxy-config examples/proxy-public.json \
+  --upstream-proxy http://127.0.0.1:7890
+```
+
+The option requires `--proxy` or `--proxy-config`. The URL must be
+`http://host:port`, without credentials, a path (including a trailing slash),
+query, or fragment. HTTPS and SOCKS proxy URLs are not supported. The endpoint
+may be loopback or private; the target public-address checks do not apply to
+the proxy itself. Without this option, direct, IP-pinned egress is unchanged.
+Environment proxy variables are still ignored and proxy failure never falls
+back to a direct connection.
+
+Origin, method, path, placeholder authorization, credential replacement,
+response redaction, and redirect reauthorization remain local. HTTP requests
+use the forward proxy's absolute-URL form; HTTPS requests use CONNECT to the
+target hostname and port, followed by TLS that verifies the target certificate
+against the host trust store.
+
+**Trust boundary:** local DNS resolution and public-address checks remain a
+preflight requirement, but the forward proxy resolves the actual destination.
+The checked IP cannot be pinned or verified through a hostname CONNECT tunnel.
+Trust the forward proxy and its DNS/address controls; the local preflight
+alone does not prevent a different remote DNS answer or DNS rebinding.
+Proxy-only DNS names and local fake-IP DNS answers that are not public will
+still be denied. To avoid silently weakening explicit IP restrictions,
+`allowCidrs` is rejected both at startup and on policy updates in upstream
+mode. Use direct mode when enforced IP ranges are required. Plain HTTP
+requests are visible to the forward proxy; HTTPS payloads remain protected
+by verified target TLS unless the host explicitly trusts an intercepting CA.
+
 ## Policy and credentials
 
 Configuration uses the v86 proxy's `allow` and `guestEnv` JSON schema. An allow
 rule contains an exact `origin` (scheme, host, port), optional `methods` and
 exact `paths`, and optional `allowCidrs` for the resolved upstream IP. No rule
 means no access. Without `allowCidrs`, only public addresses are permitted.
-Private services require both an origin and an explicit IP range. The actual
-connection uses an approved numeric address, while TLS verifies the original
-hostname. Redirects return to the client and subsequent requests need their
-own authorization.
+Private services require both an origin and an explicit IP range in direct
+mode. In that mode, the actual connection uses an approved numeric address,
+while TLS verifies the original hostname. Upstream mode has the different
+DNS trust boundary and rejects IP ranges as described above. Redirects return
+to the client and subsequent requests need their own authorization.
 
 For example, [the credential example](../examples/proxy.json) permits only POST
 to `https://api.openai.com/v1/responses` using a placeholder. Supply the real

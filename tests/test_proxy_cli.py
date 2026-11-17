@@ -89,7 +89,8 @@ async def test_startup_failure_closes_container_before_proxy(monkeypatch, failur
     calls = []
 
     class Proxy:
-        def __init__(self, policy):
+        def __init__(self, policy, *, upstream_proxy=None):
+            assert upstream_proxy is None
             assert policy == "compiled-policy"
 
         async def start(self):
@@ -125,8 +126,8 @@ async def test_cancel_during_startup_cancels_boot_and_closes_both(monkeypatch):
     started = asyncio.Event()
 
     class Proxy:
-        def __init__(self, policy):
-            pass
+        def __init__(self, policy, *, upstream_proxy=None):
+            assert upstream_proxy is None
 
         async def start(self):
             started.set()

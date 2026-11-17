@@ -117,6 +117,15 @@ page as you need them, pass `--proxy` in place of a policy file:
 uvx external-sandbox-container --proxy
 ```
 
+If the host needs a corporate or local forward proxy for outbound access, add
+`--upstream-proxy http://127.0.0.1:7890` alongside `--proxy` or
+`--proxy-config`. Only explicit HTTP proxy URLs with a host and port, without
+credentials or a path, are supported. Allowed HTTPS requests use CONNECT;
+the host still checks policy, replaces credentials, and verifies target TLS.
+Local public-address DNS checks remain, but the trusted forward proxy resolves
+the actual target: IP pinning is unavailable and policies with `allowCidrs`
+are rejected in this mode. See [upstream proxy security](docs/proxy.md#upstream-forward-proxy).
+
 Commands receive ordinary proxy environment variables and a public CA
 certificate. A small guest listener relays traffic over the existing command
 pipe to the proxy in the host Python process. The container still uses

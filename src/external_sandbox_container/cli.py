@@ -11,7 +11,7 @@ from aiohttp import web
 from .api import create_app
 from .backend import AppleContainerBackend, parse_mounts
 from .images import MINIMAL_IMAGE, ensure_tools_image
-from .proxy import HostProxy, ProxyPolicy, load_policy
+from .proxy import HostProxy, ProxyPolicy, load_policy, upstream_proxy_url
 
 
 class MountAction(argparse.Action):
@@ -38,6 +38,8 @@ def parser():
     result.add_argument("--proxy", action="store_true",
                         help="Enable host-enforced HTTP(S) egress with every destination denied; add allow rules on the /proxy page")
     result.add_argument("--proxy-config", metavar="PATH", help="Enable host-enforced HTTP(S) egress using this allow-list JSON file")
+    result.add_argument("--upstream-proxy", type=upstream_proxy_url, metavar="URL",
+                        help="Route allowed HTTP(S) egress through http://host:port (requires --proxy or --proxy-config)")
     result.add_argument("--write-setup", metavar="DIR", help="Write the bundled image recipe and proxy policy, then exit")
     return result
 
@@ -48,10 +50,12 @@ async def select_image(args):
 
 def startup_proxy(args):
     """The policy file when given, a deny-all policy for a bare --proxy, otherwise no proxy."""
+    if args.upstream_proxy and not (args.proxy or args.proxy_config):
+        raise ValueError("--upstream-proxy requires --proxy or --proxy-config")
     if args.proxy_config:
-        return HostProxy(load_policy(args.proxy_config))
+        return HostProxy(load_policy(args.proxy_config), upstream_proxy=args.upstream_proxy)
     if args.proxy:
-        return HostProxy(ProxyPolicy.from_config({"allow": []}))
+        return HostProxy(ProxyPolicy.from_config({"allow": []}), upstream_proxy=args.upstream_proxy)
     return None
 
 
