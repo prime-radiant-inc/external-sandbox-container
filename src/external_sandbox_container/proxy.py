@@ -11,6 +11,7 @@ import asyncio
 import contextlib
 import datetime
 import http
+import os
 import re
 import socket
 import ssl
@@ -169,13 +170,24 @@ def _absolute_url(target: str) -> str:
         raise PolicyError() from None
 
 
+def default_upstream_context() -> ssl.SSLContext:
+    """Trust what the host operating system trusts, as browsers and curl do.
+
+    SSL_CERT_FILE and SSL_CERT_DIR replace that trust when set. OpenSSL applies
+    them itself on Linux; the macOS verifier ignores them, so they are applied
+    here to mean the same thing on both.
+    """
+    if os.environ.get("SSL_CERT_FILE") or os.environ.get("SSL_CERT_DIR"):
+        return ssl.create_default_context()
+    return truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+
+
 class HostProxy:
     def __init__(self, policy: ProxyPolicy, *, upstream_ssl_context: ssl.SSLContext | None = None):
         self.policy = policy
         self._ca = CertificateAuthority()
         self._contexts: dict[str, ssl.SSLContext] = {}
-        # Trust what the host operating system trusts, as browsers and curl do.
-        self._upstream_ssl = upstream_ssl_context or truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        self._upstream_ssl = upstream_ssl_context or default_upstream_context()
         if (self._upstream_ssl.verify_mode != ssl.CERT_REQUIRED
                 or not self._upstream_ssl.check_hostname):
             raise ValueError("Upstream TLS verification must remain enabled")
